@@ -1,4 +1,4 @@
-import { Program, web3 } from "@coral-xyz/anchor";
+import { BN, Program, web3 } from "@coral-xyz/anchor";
 import { getConfig } from "./helpers";
 import { Governance } from "../target/types/governance";
 import * as idlGovernance from "../target/idl/governance.json";
@@ -20,21 +20,18 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 (async () => {
   const {
     payer,
-    payerPublicKey,
     rpc,
     sendAndConfirmTransaction,
-    collectionMetadata,
     provider,
     nftMetadata,
   } = await getConfig();
+  const addressEncoder = getAddressEncoder();
   const program = new Program<Governance>(idlGovernance, provider);
   const admin = payer;
 
   const recevier = await generateKeyPairSigner();
 
-  const nftMint = await generateKeyPairSigner();
 
-  const addressEncoder = getAddressEncoder();
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
     seeds: [Buffer.from("config")],
@@ -119,6 +116,53 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
     console.info(
       `NFT minted: ${getSignatureFromTransaction(signedTransactionMintNft)}`
+    );
+  }
+
+
+  const [minterNftAccount] = await getProgramDerivedAddress({
+    programAddress: fromLegacyPublicKey(program.programId),
+    seeds: [Buffer.from("minter"), addressEncoder.encode(recevier.address)],
+  })
+
+
+  // update quota credits
+  {
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const updateQuotaCreditsInstruction = await program.methods
+      .updateQuotaCredit(new BN(1000))
+      .accounts({
+        receiver: recevier.address
+      })
+      .instruction();
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        appendTransactionMessageInstruction(
+          fromLegacyTransactionInstruction(updateQuotaCreditsInstruction),
+          tx
+        ),
+      (tx) => addSignersToTransactionMessage([admin], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Quota credits updated: ${getSignatureFromTransaction(
+        signedTransactionMintNft
+      )}`
     );
   }
 })();
