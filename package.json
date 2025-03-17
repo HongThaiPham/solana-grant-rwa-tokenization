@@ -8,6 +8,7 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "build-and-deploy-governance": "anchor build -p governance && anchor deploy -p governance --provider.cluster devnet",
     "test:issue-minter": "tsx app/issue-minter.ts"
   },
   "dependencies": {

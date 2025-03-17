@@ -49,13 +49,13 @@ export async function getConfig() {
   const collectionMetadata = {
     name: "Carbon NFT Collection",
     symbol: "CCNFT",
-    uri: "https://arweave.net/1234",
+    uri: "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json",
   };
 
   const nftMetadata = {
     name: "Minter NFT",
     symbol: "MNT",
-    uri: "https://arweave.net/1234",
+    uri: "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json",
   };
   return {
     provider,

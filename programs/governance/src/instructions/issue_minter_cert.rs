@@ -8,9 +8,11 @@ use anchor_spl::{
         Token2022,
     },
     token_interface::{
-        mint_to, set_authority, spl_pod::optional_keys::OptionalNonZeroPubkey,
-        spl_token_metadata_interface::state::TokenMetadata, Mint, MintTo, SetAuthority,
-        TokenAccount,
+        mint_to, set_authority,
+        spl_pod::optional_keys::OptionalNonZeroPubkey,
+        spl_token_metadata_interface::state::{Field, TokenMetadata},
+        token_metadata_initialize, token_metadata_update_field, Mint, MintTo, SetAuthority,
+        TokenAccount, TokenMetadataInitialize, TokenMetadataUpdateField,
     },
 };
 
@@ -56,7 +58,8 @@ pub struct IssueMinterCert<'info> {
 
 impl<'info> IssueMinterCert<'info> {
     pub fn handler(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
-        self.update_account_lamports_by_extensions(name, symbol, uri)?;
+        self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
+        self.init_nft_collection_metadata(name, symbol, uri)?;
         self.mint_and_send_nft()?;
         Ok(())
     }
@@ -81,15 +84,74 @@ impl<'info> IssueMinterCert<'info> {
 
         // Freeze mint authority to prevent minting more tokens
         set_authority(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 SetAuthority {
                     current_authority: self.config_account.to_account_info(),
                     account_or_mint: self.mint.to_account_info(),
                 },
+                signer_seeds,
             ),
             AuthorityType::MintTokens,
             None,
+        )?;
+
+        Ok(())
+    }
+
+    fn init_nft_collection_metadata(
+        &mut self,
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> Result<()> {
+        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let signer_seeds = &[&seeds[..]];
+        // init token metadata
+
+        token_metadata_initialize(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TokenMetadataInitialize {
+                    mint: self.mint.to_account_info(),
+                    program_id: self.token_program.to_account_info(),
+                    mint_authority: self.config_account.to_account_info(),
+                    update_authority: self.config_account.to_account_info(),
+                    metadata: self.mint.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            name,
+            symbol,
+            uri,
+        )?;
+
+        token_metadata_update_field(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TokenMetadataUpdateField {
+                    metadata: self.mint.to_account_info(),
+                    update_authority: self.config_account.to_account_info(),
+                    program_id: self.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            Field::Key("available_credits".to_string()),
+            "0".to_string(),
+        )?;
+
+        token_metadata_update_field(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TokenMetadataUpdateField {
+                    metadata: self.mint.to_account_info(),
+                    update_authority: self.config_account.to_account_info(),
+                    program_id: self.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            Field::Key("minted_credits".to_string()),
+            "0".to_string(),
         )?;
 
         Ok(())

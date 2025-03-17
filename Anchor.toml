@@ -1,4 +1,5 @@
 [toolchain]
+anchor_version = "0.31.0"
 package_manager = "yarn"
 
 [features]
@@ -6,8 +7,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-governance = "UW1LxzYAEPSwVFMMXkF9P8fsdQZTpdStKS5pvxDmhhk"
-rwa_tokenization = "3Eobnrs1AS1m1cct7qRYVbEAsZax4eiU2ZdJSDw7d6tK"
+governance = "AZXWgDHioQgyB1FuvmwGp5QadJJdmuYz15K9qid74d7M"
+rwa_tokenization = "E1i3Azc7n7pvb3KGecb7B9nZANRuWeZvf27eBsa2sQ8d"
 
 [registry]
 url = "https://api.apr.dev"
