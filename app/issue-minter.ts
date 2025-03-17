@@ -41,6 +41,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   const governanceConfigAccountData = await rpc.getAccountInfo(governanceConfigAccount);
   if (governanceConfigAccountData === null) {
+    console.info("Init governance config account");
     // init governance program
     {
       let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
@@ -85,6 +86,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   // issue a minter cert nft
   {
+    console.info("Issue minter cert nft");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const issueNftInstruction = await program.methods
@@ -130,6 +132,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   // update quota credits for minter nft
   {
+    console.info("Update quota credits for minter nft to 1000");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const updateQuotaCreditsInstruction = await program.methods
@@ -170,6 +173,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   // issue a consumer cert nft
   {
+    console.info("Issue consumer cert nft");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const issueNftInstruction = await program.methods
