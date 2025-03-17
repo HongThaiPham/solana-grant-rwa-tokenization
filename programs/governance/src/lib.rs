@@ -31,4 +31,13 @@ pub mod governance {
     pub fn update_quota_credit(ctx: Context<UpdateQuotaCredit>, new_credit: u64) -> Result<()> {
         ctx.accounts.handler(new_credit)
     }
+
+    pub fn issue_consumer_cert(
+        ctx: Context<IssueConsumerCert>,
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> Result<()> {
+        ctx.accounts.handler(name, symbol, uri)
+    }
 }

@@ -23,14 +23,16 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
     rpc,
     sendAndConfirmTransaction,
     provider,
-    nftMetadata,
+    minternftMetadata,
+    consumernftMetadata,
   } = await getConfig();
   const addressEncoder = getAddressEncoder();
   const program = new Program<Governance>(idlGovernance, provider);
   const admin = payer;
 
-  const recevier = await generateKeyPairSigner();
 
+  const recevier = await generateKeyPairSigner();
+  const consumer1 = await generateKeyPairSigner();
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -81,14 +83,14 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
     }
   }
 
-  // mint nft
+  // issue a minter cert nft
   {
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const issueNftInstruction = await program.methods
-      .issueMinterCert(nftMetadata.name, nftMetadata.symbol, nftMetadata.uri)
+      .issueMinterCert(minternftMetadata.name, minternftMetadata.symbol, minternftMetadata.uri)
       .accounts({
-        receiver: new web3.PublicKey(recevier.address),
+        receiver: recevier.address,
       })
       .instruction();
 
@@ -126,7 +128,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
   })
 
 
-  // update quota credits
+  // update quota credits for minter nft
   {
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -163,6 +165,44 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
       `Quota credits updated: ${getSignatureFromTransaction(
         signedTransactionMintNft
       )}`
+    );
+  }
+
+  // issue a consumer cert nft
+  {
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const issueNftInstruction = await program.methods
+      .issueConsumerCert(consumernftMetadata.name, consumernftMetadata.symbol, consumernftMetadata.uri)
+      .accounts({
+        receiver: consumer1.address,
+      })
+      .instruction();
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        appendTransactionMessageInstruction(
+          fromLegacyTransactionInstruction(issueNftInstruction),
+          tx
+        ),
+      (tx) => addSignersToTransactionMessage([admin], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Consumer NFT minted tx: ${getSignatureFromTransaction(signedTransactionMintNft)}`
     );
   }
 })();
