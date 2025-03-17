@@ -39,6 +39,7 @@ pub struct IssueMinterCert<'info> {
       extensions::metadata_pointer::authority = config_account,
       extensions::metadata_pointer::metadata_address = mint,
       extensions::close_authority::authority = config_account,
+      extensions::permanent_delegate::delegate = config_account,
       seeds = [MINTER_NFT_SEED, receiver.key.as_ref()],
       bump
     )]

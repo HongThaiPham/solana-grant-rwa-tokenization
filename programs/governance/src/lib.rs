@@ -40,4 +40,13 @@ pub mod governance {
     ) -> Result<()> {
         ctx.accounts.handler(name, symbol, uri)
     }
+
+    pub fn init_carbon_token(
+        ctx: Context<InitCarbonToken>,
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> Result<()> {
+        ctx.accounts.handler(name, symbol, uri, &ctx.bumps)
+    }
 }

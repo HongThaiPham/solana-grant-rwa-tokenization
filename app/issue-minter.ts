@@ -25,13 +25,14 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
     provider,
     minternftMetadata,
     consumernftMetadata,
+    tokenUri
   } = await getConfig();
   const addressEncoder = getAddressEncoder();
   const program = new Program<Governance>(idlGovernance, provider);
   const admin = payer;
 
 
-  const recevier = await generateKeyPairSigner();
+  const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
@@ -92,7 +93,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
     const issueNftInstruction = await program.methods
       .issueMinterCert(minternftMetadata.name, minternftMetadata.symbol, minternftMetadata.uri)
       .accounts({
-        receiver: recevier.address,
+        receiver: minter.address,
       })
       .instruction();
 
@@ -126,7 +127,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   const [minterNftAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
-    seeds: [Buffer.from("minter"), addressEncoder.encode(recevier.address)],
+    seeds: [Buffer.from("minter"), addressEncoder.encode(minter.address)],
   })
 
 
@@ -138,7 +139,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
     const updateQuotaCreditsInstruction = await program.methods
       .updateQuotaCredit(new BN(1000))
       .accounts({
-        receiver: recevier.address
+        receiver: minter.address
       })
       .instruction();
 
@@ -207,6 +208,51 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
     console.info(
       `Consumer NFT minted tx: ${getSignatureFromTransaction(signedTransactionMintNft)}`
+    );
+  }
+
+  // init token carbon credits mint
+  const carbonCreditMint = await generateKeyPairSigner();
+  {
+    console.info("Init token carbon credits mint");
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const initializeTokenMint = await program.methods
+      .initCarbonToken("Carbon Credits", "CC", tokenUri)
+      .accounts({
+        payer: admin.address,
+        creator: minter.address,
+        mint: carbonCreditMint.address,
+        transferHookProgram: web3.Keypair.generate().publicKey,
+      })
+      .instruction();
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        appendTransactionMessageInstruction(
+          fromLegacyTransactionInstruction(initializeTokenMint),
+          tx
+        ),
+      (tx) => addSignersToTransactionMessage([admin, minter, carbonCreditMint], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Token carbon credits mint initialized: ${getSignatureFromTransaction(
+        signedTransactionMintNft
+      )}`
     );
   }
 })();

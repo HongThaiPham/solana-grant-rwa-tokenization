@@ -58,22 +58,24 @@ export async function getConfig() {
     rpcSubscriptions,
   });
 
+  const tokenUri = "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json";
+
   const collectionMetadata = {
     name: "Carbon NFT Collection",
     symbol: "CCNFT",
-    uri: "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json",
+    uri: tokenUri,
   };
 
   const minternftMetadata = {
     name: "Minter NFT",
     symbol: "MNT",
-    uri: "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json",
+    uri: tokenUri
   };
 
   const consumernftMetadata = {
     name: "Consumer NFT",
     symbol: "CST",
-    uri: "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json",
+    uri: tokenUri
   };
   return {
     provider,
@@ -88,6 +90,6 @@ export async function getConfig() {
     minternftMetadata,
     consumer1,
     consumernftMetadata,
-    minter1, consumer2
+    minter1, consumer2, tokenUri
   };
 }

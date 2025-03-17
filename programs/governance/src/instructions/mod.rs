@@ -13,3 +13,7 @@ pub use update_quota_credit::*;
 pub mod issue_consumer_cert;
 
 pub use issue_consumer_cert::*;
+
+pub mod init_carbon_token;
+
+pub use init_carbon_token::*;

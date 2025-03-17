@@ -37,6 +37,7 @@ pub struct IssueConsumerCert<'info> {
       extensions::metadata_pointer::authority = config_account,
       extensions::metadata_pointer::metadata_address = mint,
       extensions::close_authority::authority = config_account,
+      extensions::permanent_delegate::delegate = config_account,
       seeds = [CONSUMER_NFT_SEED, receiver.key.as_ref()],
       bump
     )]
@@ -49,6 +50,7 @@ pub struct IssueConsumerCert<'info> {
       associated_token::authority = receiver
     )]
     pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token2022>,
