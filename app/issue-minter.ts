@@ -7,6 +7,7 @@ import {
   appendTransactionMessageInstruction,
   createTransactionMessage,
   generateKeyPairSigner,
+  getSignatureFromTransaction,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -60,5 +61,11 @@ import { fromLegacyTransactionInstruction } from "@solana/compat";
     await sendAndConfirmTransaction(signedTransactionMintNft, {
       commitment: "confirmed",
     });
+
+    console.info(
+      `Program initialized: ${getSignatureFromTransaction(
+        signedTransactionMintNft
+      )}`
+    );
   }
 })();
