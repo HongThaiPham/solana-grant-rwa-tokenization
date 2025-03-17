@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-governance = "AZXWgDHioQgyB1FuvmwGp5QadJJdmuYz15K9qid74d7M"
+governance = "2kJZ2rFXsb2qdM1H3kEz2wogDDtR42wvmQJKFRi6tzYQ"
 rwa_tokenization = "E1i3Azc7n7pvb3KGecb7B9nZANRuWeZvf27eBsa2sQ8d"
 
 [registry]

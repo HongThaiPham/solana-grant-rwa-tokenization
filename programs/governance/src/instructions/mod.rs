@@ -17,3 +17,7 @@ pub use issue_consumer_cert::*;
 pub mod init_carbon_token;
 
 pub use init_carbon_token::*;
+
+pub mod mint_carbon_token;
+
+pub use mint_carbon_token::*;

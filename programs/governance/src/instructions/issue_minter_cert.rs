@@ -25,7 +25,7 @@ pub struct IssueMinterCert<'info> {
     #[account(
       has_one = authority,
       seeds = [GOVERNANCE_CONFIG_SEED],
-      bump
+      bump = config_account.bump
     )]
     pub config_account: Box<Account<'info, GovernanceConfig>>,
     /// CHECK: This is nft keeper account

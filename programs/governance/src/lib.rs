@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("AZXWgDHioQgyB1FuvmwGp5QadJJdmuYz15K9qid74d7M");
+declare_id!("2kJZ2rFXsb2qdM1H3kEz2wogDDtR42wvmQJKFRi6tzYQ");
 
 #[program]
 pub mod governance {
@@ -48,5 +48,9 @@ pub mod governance {
         uri: String,
     ) -> Result<()> {
         ctx.accounts.handler(name, symbol, uri, &ctx.bumps)
+    }
+
+    pub fn mint_carbon_token(ctx: Context<MintCarbonToken>, amount: u64) -> Result<()> {
+        ctx.accounts.handler(amount)
     }
 }

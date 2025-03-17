@@ -34,14 +34,15 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
   const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
+  const transferHookProgram = web3.Keypair.generate().publicKey;
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
     seeds: [Buffer.from("config")],
   })
 
-  const governanceConfigAccountData = await rpc.getAccountInfo(governanceConfigAccount);
-  if (governanceConfigAccountData === null) {
+  const governanceConfigAccountData = await rpc.getAccountInfo(governanceConfigAccount).send();
+  if (governanceConfigAccountData.value === null) {
     console.info("Init governance config account");
     // init governance program
     {
@@ -66,7 +67,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
             fromLegacyTransactionInstruction(initializeProgram),
             tx
           ),
-        (tx) => addSignersToTransactionMessage([payer, nftMint], tx)
+        (tx) => addSignersToTransactionMessage([payer], tx)
       );
 
       const signedTransactionMintNft = await signTransactionMessageWithSigners(
@@ -223,7 +224,7 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
         payer: admin.address,
         creator: minter.address,
         mint: carbonCreditMint.address,
-        transferHookProgram: web3.Keypair.generate().publicKey,
+        transferHookProgram
       })
       .instruction();
 
@@ -251,6 +252,50 @@ import { fromLegacyPublicKey, fromLegacyTransactionInstruction } from "@solana/c
 
     console.info(
       `Token carbon credits mint initialized: ${getSignatureFromTransaction(
+        signedTransactionMintNft
+      )}`
+    );
+  }
+
+  // mint more carbon credits token
+  {
+    console.info("Mint more carbon credits token");
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const mintTokenInstruction = await program.methods
+      .mintCarbonToken(new BN(300))
+      .accounts({
+        mint: carbonCreditMint.address,
+        creator: minter.address,
+        payer: admin.address,
+        transferHookProgram,
+      })
+      .instruction();
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        appendTransactionMessageInstruction(
+          fromLegacyTransactionInstruction(mintTokenInstruction),
+          tx
+        ),
+      (tx) => addSignersToTransactionMessage([admin, minter], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Token carbon credits minted: ${getSignatureFromTransaction(
         signedTransactionMintNft
       )}`
     );

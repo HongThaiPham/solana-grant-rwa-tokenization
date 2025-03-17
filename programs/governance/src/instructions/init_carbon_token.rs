@@ -45,7 +45,7 @@ pub struct InitCarbonToken<'info> {
         associated_token::mint = minter_nft_mint,
         associated_token::authority = creator
     )]
-    pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub minter_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// CHECK: This is transfer hook program
     pub transfer_hook_program: AccountInfo<'info>,
     pub token_program: Program<'info, Token2022>,
