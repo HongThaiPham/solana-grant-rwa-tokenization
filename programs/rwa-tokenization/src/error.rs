@@ -4,4 +4,9 @@ use anchor_lang::prelude::*;
 pub enum MyErrorCode {
     #[msg("Insufficient credits")]
     InsufficientCredits,
+    #[msg("Overflow")]
+    Overflow,
+    #[msg("No credits")]
+    NoCredits,
+    InvalidAmount,
 }

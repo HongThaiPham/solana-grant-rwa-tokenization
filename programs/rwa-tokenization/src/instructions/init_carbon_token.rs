@@ -1,9 +1,21 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, 
-    token_2022::{spl_token_2022::{self, extension::ExtensionType}, Token2022}, 
-    token_interface::{spl_pod::optional_keys::OptionalNonZeroPubkey, spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint, TokenAccount, TokenMetadataInitialize}};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_2022::{
+        spl_token_2022::{self, extension::ExtensionType},
+        Token2022,
+    },
+    token_interface::{
+        spl_pod::optional_keys::OptionalNonZeroPubkey,
+        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
+        TokenAccount, TokenMetadataInitialize,
+    },
+};
 
-use crate::{update_account_minimun_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED};
+use crate::{
+    update_account_minimun_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED,
+    MINT_AUTHORITY_SEED,
+};
 
 #[derive(Accounts)]
 pub struct InitCarbonToken<'info> {
@@ -24,10 +36,10 @@ pub struct InitCarbonToken<'info> {
         payer = payer,
         mint::token_program = token_program,
         mint::authority = mint_authority,
-        mint::decimals = 0, 
+        mint::decimals = 0,
         extensions::metadata_pointer::authority = mint_authority,
         extensions::metadata_pointer::metadata_address = mint,
-        extensions::close_authority::authority = mint_authority, 
+        extensions::close_authority::authority = mint_authority,
         extensions::transfer_hook::program_id = transfer_hook_program,
         extensions::transfer_hook::authority = mint_authority,
         seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
@@ -36,7 +48,7 @@ pub struct InitCarbonToken<'info> {
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mint::token_program = token_program,
-        mint::decimals = 0, 
+        mint::decimals = 0,
         constraint = minter_nft_mint.supply == 1,
         seeds = [MINTER_NFT_SEED, creator.key.as_ref()],
         bump
@@ -55,15 +67,20 @@ pub struct InitCarbonToken<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
 impl<'info> InitCarbonToken<'info> {
-    pub fn handler(&mut self, name: String, symbol: String, uri: String, bump: &InitCarbonTokenBumps) -> Result<()> {
-        self.mint_authority.set_inner(
-            MintAuthority { 
-                authority: self.creator.key(),
-                 mint: self.mint.key(), 
-                 transfer_hook: self.transfer_hook_program.key(), 
-                 bump: bump.mint_authority });
+    pub fn handler(
+        &mut self,
+        name: String,
+        symbol: String,
+        uri: String,
+        bump: &InitCarbonTokenBumps,
+    ) -> Result<()> {
+        self.mint_authority.set_inner(MintAuthority {
+            authority: self.creator.key(),
+            mint: self.mint.key(),
+            transfer_hook: self.transfer_hook_program.key(),
+            bump: bump.mint_authority,
+        });
         self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
         self.init_nft_metadata(name, symbol, uri)?;
         Ok(())
@@ -71,7 +88,11 @@ impl<'info> InitCarbonToken<'info> {
 
     fn init_nft_metadata(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
         let mint_key = self.mint.key();
-        let seeds = &[MINT_AUTHORITY_SEED, mint_key.as_ref(), &[self.mint_authority.bump]];
+        let seeds = &[
+            MINT_AUTHORITY_SEED,
+            mint_key.as_ref(),
+            &[self.mint_authority.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
         // init token metadata
 
@@ -128,5 +149,4 @@ impl<'info> InitCarbonToken<'info> {
         )?;
         Ok(())
     }
-    
 }
