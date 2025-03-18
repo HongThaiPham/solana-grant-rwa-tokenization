@@ -132,8 +132,6 @@ import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
       seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
     });
 
-    getAssociatedTokenAddressSync;
-
     const [receiverTokenAccount] = await getProgramDerivedAddress({
       programAddress: fromLegacyPublicKey(ASSOCIATED_PROGRAM_ID),
       seeds: [
