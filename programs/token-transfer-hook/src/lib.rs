@@ -1,14 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_2022::{
-        spl_token_2022::{
-            self,
-            extension::{
-                transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
-            },
+    token_2022::spl_token_2022::{
+        self,
+        extension::{
+            transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
         },
-        Token2022,
     },
     token_interface::{Mint, TokenAccount},
 };
@@ -29,7 +25,7 @@ pub enum TokenTransferHookError {
     UnAuthorized,
 }
 
-declare_id!("4vB2SxD3TQ7TNEk7XYAbG63peM63S1W6c1gthEyGE7xN");
+declare_id!("3iSipiR8nmukvNan7ZWDJ2Cx7V7EmHPXLkQmsN1nrEna");
 
 #[program]
 pub mod token_transfer_hook {

@@ -21,3 +21,7 @@ pub use init_carbon_token::*;
 pub mod mint_carbon_token;
 
 pub use mint_carbon_token::*;
+
+pub mod retire_token;
+
+pub use retire_token::*;

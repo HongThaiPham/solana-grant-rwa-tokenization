@@ -9,4 +9,5 @@ pub enum MyErrorCode {
     #[msg("No credits")]
     NoCredits,
     InvalidAmount,
+    InsufficientBalance,
 }

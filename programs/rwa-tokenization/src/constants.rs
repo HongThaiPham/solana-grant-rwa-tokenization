@@ -10,3 +10,6 @@ pub const CARBON_CREDIT_TOKEN_SEED: &[u8] = b"cct"; // carbon credit token
 
 pub static AVAILABLE_CREDITS_KEY: &str = "available_credits";
 pub static MINTED_CREDITS_KEY: &str = "minted_credits";
+pub static RETIRED_CREDITS_KEY: &str = "retired_credits";
+pub static RETIRED_CREDITS_CERT_NAME: &str = "Retired Carbon Credit";
+pub static RETIRED_CREDITS_CERT_SYMBOL: &str = "RCC";

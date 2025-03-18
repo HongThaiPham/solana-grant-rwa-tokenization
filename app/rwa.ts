@@ -110,6 +110,7 @@ import {
 
   // issue a minter cert nft
   {
+    console.log("--------------------");
     console.info("Issue minter cert nft");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -155,6 +156,7 @@ import {
 
   // update quota credits for minter nft
   {
+    console.log("--------------------");
     console.info("Update quota credits for minter nft to 1000");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -196,6 +198,7 @@ import {
 
   // issue a consumer cert nft
   {
+    console.log("--------------------");
     console.info("Issue consumer cert nft");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -249,7 +252,9 @@ import {
     programAddress: fromLegacyPublicKey(program.programId),
     seeds: [Buffer.from("cct"), addressEncoder.encode(nftMinterMintAddress)],
   });
+
   {
+    console.log("--------------------");
     console.info("Init token carbon credits mint");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -308,6 +313,7 @@ import {
 
   // mint more carbon credits token
   {
+    console.log("--------------------");
     console.info("Mint more carbon credits token");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -366,6 +372,7 @@ import {
     );
 
     {
+      console.log("--------------------");
       console.log("Create associated token account for receiver");
       let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const transaction = pipe(
@@ -405,6 +412,7 @@ import {
     }
 
     {
+      console.log("--------------------");
       console.info("Issue consumer cert nft for minter to transfer");
       let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
@@ -453,6 +461,7 @@ import {
     await new Promise((resolve) => setTimeout(resolve, 10000));
 
     {
+      console.log("--------------------");
       console.info("Transfer 10 carbon credits token from minter to receiver");
       const ix = await createTransferCheckedWithTransferHookInstruction(
         connection,
@@ -493,6 +502,56 @@ import {
 
       console.info(
         `Token carbon credits transferred: ${explorerUrl(
+          getSignatureFromTransaction(signedTransaction)
+        )}`
+      );
+    }
+
+    // retire token
+    {
+      console.log("--------------------");
+      console.info(
+        "Retire 10 carbon credits token from consumer and receive nft certificate"
+      );
+      let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+      const nftMint = await generateKeyPairSigner();
+
+      const instruction = await program.methods
+        .retireToken(new BN(10))
+        .accounts({
+          payer: admin.address,
+          consumer: consumer1.address,
+          mint: carbonCreditsMintAddress,
+          nftMint: nftMint.address,
+          transferHookProgram: transferHookProgram.programId,
+        })
+        .instruction();
+
+      const transaction = pipe(
+        createTransactionMessage({
+          version: 0,
+        }),
+        (tx) => setTransactionMessageFeePayer(admin.address, tx),
+        (tx) =>
+          setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+        (tx) =>
+          appendTransactionMessageInstruction(
+            fromLegacyTransactionInstruction(instruction),
+            tx
+          ),
+        (tx) => addSignersToTransactionMessage([admin, consumer1, nftMint], tx)
+      );
+
+      const signedTransaction = await signTransactionMessageWithSigners(
+        transaction
+      );
+
+      await sendAndConfirmTransaction(signedTransaction, {
+        commitment: "confirmed",
+      });
+
+      console.info(
+        `Consumer NFT minted tx: ${explorerUrl(
           getSignatureFromTransaction(signedTransaction)
         )}`
       );
