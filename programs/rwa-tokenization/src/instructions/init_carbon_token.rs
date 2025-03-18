@@ -1,9 +1,9 @@
-use anchor_lang::{prelude::*, system_program};
+use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, 
     token_2022::{spl_token_2022::{self, extension::ExtensionType}, Token2022}, 
     token_interface::{spl_pod::optional_keys::OptionalNonZeroPubkey, spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint, TokenAccount, TokenMetadataInitialize}};
 
-use crate::{MintAuthority, MINTER_NFT_SEED, MINT_AUTHORITY_SEED};
+use crate::{update_account_minimun_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED};
 
 #[derive(Accounts)]
 pub struct InitCarbonToken<'info> {
@@ -29,7 +29,9 @@ pub struct InitCarbonToken<'info> {
         extensions::metadata_pointer::metadata_address = mint,
         extensions::close_authority::authority = mint_authority, 
         extensions::transfer_hook::program_id = transfer_hook_program,
-        extensions::transfer_hook::authority = mint_authority  
+        extensions::transfer_hook::authority = mint_authority,
+        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
+        bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -118,23 +120,11 @@ impl<'info> InitCarbonToken<'info> {
 
         let total_space = space + meta_data_space;
 
-        let lamports_required = (Rent::get()?).minimum_balance(total_space);
-
-        msg!(
-            "Create Mint and metadata account size with cost: {} lamports: {}",
-            total_space as u64,
-            lamports_required
-        );
-
-        system_program::transfer(
-            CpiContext::new(
-                self.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: self.payer.to_account_info(),
-                    to: self.mint.to_account_info(),
-                },
-            ),
-            lamports_required,
+        update_account_minimun_lamports(
+            self.mint.to_account_info(),
+            self.payer.to_account_info(),
+            self.system_program.to_account_info(),
+            total_space,
         )?;
         Ok(())
     }

@@ -8,8 +8,8 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "build-and-deploy-governance": "anchor build -p governance && anchor deploy -p governance --provider.cluster devnet",
-    "test:issue-minter": "tsx app/issue-minter.ts"
+    "build-and-deploy-rwa": "anchor build -p rwa-tokenization && anchor deploy -p rwa-tokenization --provider.cluster devnet",
+    "test:rwa": "tsx app/rwa.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",

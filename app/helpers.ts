@@ -23,15 +23,33 @@ export async function getConfig() {
   );
 
   const minter1 = await createKeyPairSignerFromBytes(
-    new Uint8Array(JSON.parse(require("fs").readFileSync("./test-wallet/MTWGugyrtQj6C3ZsPxECTNjiSk4FdaA8bnGbcigjRSQ.json")))
+    new Uint8Array(
+      JSON.parse(
+        require("fs").readFileSync(
+          "./test-wallet/MTWGugyrtQj6C3ZsPxECTNjiSk4FdaA8bnGbcigjRSQ.json"
+        )
+      )
+    )
   );
 
   const consumer1 = await createKeyPairSignerFromBytes(
-    new Uint8Array(JSON.parse(require("fs").readFileSync("./test-wallet/Cns1AfgvwRHPwWqEZkfwJncJs7Y3emhuygGexQofpsNv.json")))
+    new Uint8Array(
+      JSON.parse(
+        require("fs").readFileSync(
+          "./test-wallet/Cns1AfgvwRHPwWqEZkfwJncJs7Y3emhuygGexQofpsNv.json"
+        )
+      )
+    )
   );
 
   const consumer2 = await createKeyPairSignerFromBytes(
-    new Uint8Array(JSON.parse(require("fs").readFileSync("./test-wallet/CnsftgedV1RdrpzusDHyErxA32QtEuFXfE2PNWfATWqY.json")))
+    new Uint8Array(
+      JSON.parse(
+        require("fs").readFileSync(
+          "./test-wallet/CnsftgedV1RdrpzusDHyErxA32QtEuFXfE2PNWfATWqY.json"
+        )
+      )
+    )
   );
 
   const connection = new web3.Connection(`https://${RPC_HOST}`);
@@ -58,7 +76,8 @@ export async function getConfig() {
     rpcSubscriptions,
   });
 
-  const tokenUri = "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json";
+  const tokenUri =
+    "https://raw.githubusercontent.com/HongThaiPham/summer-bootcamp-anchor-token2022-stake/main/app/assets/token-info.json";
 
   const collectionMetadata = {
     name: "Carbon NFT Collection",
@@ -69,13 +88,13 @@ export async function getConfig() {
   const minternftMetadata = {
     name: "Minter NFT",
     symbol: "MNT",
-    uri: tokenUri
+    uri: tokenUri,
   };
 
   const consumernftMetadata = {
     name: "Consumer NFT",
     symbol: "CST",
-    uri: tokenUri
+    uri: tokenUri,
   };
   return {
     provider,
@@ -90,6 +109,11 @@ export async function getConfig() {
     minternftMetadata,
     consumer1,
     consumernftMetadata,
-    minter1, consumer2, tokenUri
+    minter1,
+    consumer2,
+    tokenUri,
   };
 }
+
+export const explorerUrl = (tx: string) =>
+  `https://explorer.solana.com/tx/${tx}?cluster=devnet`;

@@ -1,6 +1,6 @@
 use std::vec;
 
-use anchor_lang::{prelude::*, system_program};
+use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::{
@@ -8,16 +8,21 @@ use anchor_spl::{
         Token2022,
     },
     token_interface::{
-        mint_to, set_authority, spl_pod::optional_keys::OptionalNonZeroPubkey,
-        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
-        MintTo, SetAuthority, TokenAccount, TokenMetadataInitialize,
+        mint_to, set_authority,
+        spl_pod::optional_keys::OptionalNonZeroPubkey,
+        spl_token_metadata_interface::state::{Field, TokenMetadata},
+        token_metadata_initialize, token_metadata_update_field, Mint, MintTo, SetAuthority,
+        TokenAccount, TokenMetadataInitialize, TokenMetadataUpdateField,
     },
 };
 
-use crate::{GovernanceConfig, CONSUMER_NFT_SEED, GOVERNANCE_CONFIG_SEED};
+use crate::{
+    update_account_minimun_lamports, GovernanceConfig, AVAILABLE_CREDITS_KEY,
+    GOVERNANCE_CONFIG_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED,
+};
 
 #[derive(Accounts)]
-pub struct IssueConsumerCert<'info> {
+pub struct IssueMinterCert<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
@@ -38,7 +43,7 @@ pub struct IssueConsumerCert<'info> {
       extensions::metadata_pointer::metadata_address = mint,
       extensions::close_authority::authority = config_account,
       extensions::permanent_delegate::delegate = config_account,
-      seeds = [CONSUMER_NFT_SEED, receiver.key.as_ref()],
+      seeds = [MINTER_NFT_SEED, receiver.key.as_ref()],
       bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
@@ -50,15 +55,19 @@ pub struct IssueConsumerCert<'info> {
       associated_token::authority = receiver
     )]
     pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token2022>,
 }
 
-impl<'info> IssueConsumerCert<'info> {
+impl<'info> IssueMinterCert<'info> {
     pub fn handler(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
-        self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
+        self.update_account_lamports_by_extensions(
+            name.clone(),
+            symbol.clone(),
+            uri.clone(),
+            &[ExtensionType::MetadataPointer],
+        )?;
         self.init_nft_metadata(name, symbol, uri)?;
         self.mint_and_send_nft()?;
         Ok(())
@@ -121,6 +130,34 @@ impl<'info> IssueConsumerCert<'info> {
             uri,
         )?;
 
+        token_metadata_update_field(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TokenMetadataUpdateField {
+                    metadata: self.mint.to_account_info(),
+                    update_authority: self.config_account.to_account_info(),
+                    program_id: self.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            Field::Key(AVAILABLE_CREDITS_KEY.to_string()),
+            "0".to_string(),
+        )?;
+
+        token_metadata_update_field(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TokenMetadataUpdateField {
+                    metadata: self.mint.to_account_info(),
+                    update_authority: self.config_account.to_account_info(),
+                    program_id: self.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            Field::Key(MINTED_CREDITS_KEY.to_string()),
+            "0".to_string(),
+        )?;
+
         Ok(())
     }
 
@@ -129,6 +166,7 @@ impl<'info> IssueConsumerCert<'info> {
         name: String,
         symbol: String,
         uri: String,
+        extension: &[ExtensionType],
     ) -> Result<()> {
         let token_metadata = TokenMetadata {
             update_authority: OptionalNonZeroPubkey(self.config_account.key()),
@@ -136,36 +174,27 @@ impl<'info> IssueConsumerCert<'info> {
             name: name.to_string(),
             symbol: symbol.to_string(),
             uri: uri.to_string(),
-            ..Default::default()
+            additional_metadata: vec![
+                (AVAILABLE_CREDITS_KEY.to_string(), "0".to_string()),
+                (MINTED_CREDITS_KEY.to_string(), "0".to_string()),
+            ],
         };
 
-        let space = ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(&[
-            ExtensionType::MetadataPointer,
-        ])
-        .unwrap();
+        let space =
+            ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(extension)
+                .unwrap();
 
         let meta_data_space = token_metadata.tlv_size_of().unwrap();
 
         let total_space = space + meta_data_space;
 
-        let lamports_required = (Rent::get()?).minimum_balance(total_space);
-
-        msg!(
-            "Create Mint and metadata account size with cost: {} lamports: {}",
-            total_space as u64,
-            lamports_required
-        );
-
-        system_program::transfer(
-            CpiContext::new(
-                self.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: self.authority.to_account_info(),
-                    to: self.mint.to_account_info(),
-                },
-            ),
-            lamports_required,
+        update_account_minimun_lamports(
+            self.mint.to_account_info(),
+            self.authority.to_account_info(),
+            self.system_program.to_account_info(),
+            total_space,
         )?;
+
         Ok(())
     }
 }

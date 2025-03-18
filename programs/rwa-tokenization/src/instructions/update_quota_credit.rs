@@ -7,7 +7,7 @@ use anchor_spl::{
     },
 };
 
-use crate::{GovernanceConfig, GOVERNANCE_CONFIG_SEED, MINTER_NFT_SEED};
+use crate::{GovernanceConfig, AVAILABLE_CREDITS_KEY, GOVERNANCE_CONFIG_SEED, MINTER_NFT_SEED};
 
 #[derive(Accounts)]
 pub struct UpdateQuotaCredit<'info> {
@@ -46,7 +46,7 @@ impl<'info> UpdateQuotaCredit<'info> {
                 },
                 signer_seeds,
             ),
-            Field::Key("available_credits".to_string()),
+            Field::Key(AVAILABLE_CREDITS_KEY.to_string()),
             new_credit.to_string(),
         )?;
         Ok(())

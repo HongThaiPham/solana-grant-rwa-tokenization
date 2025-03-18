@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_2022::{spl_token_2022::{self, extension::{BaseStateWithExtensions, StateWithExtensions}}, Token2022}, token_interface::{mint_to, spl_token_metadata_interface::state::{Field, TokenMetadata}, token_metadata_update_field, Mint, MintTo, TokenAccount, TokenMetadataUpdateField}};
 
-use crate::{error::MyErrorCode, GovernanceConfig, MintAuthority, GOVERNANCE_CONFIG_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED};
+use crate::{error::MyErrorCode, GovernanceConfig, MintAuthority, CARBON_CREDIT_TOKEN_SEED, GOVERNANCE_CONFIG_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED};
 
 #[derive(Accounts)]
 pub struct MintCarbonToken<'info> {
@@ -31,7 +31,9 @@ pub struct MintCarbonToken<'info> {
         extensions::metadata_pointer::metadata_address = mint,
         extensions::close_authority::authority = mint_authority, 
         extensions::transfer_hook::program_id = transfer_hook_program,
-        extensions::transfer_hook::authority = mint_authority  
+        extensions::transfer_hook::authority = mint_authority,
+        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
+        bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
