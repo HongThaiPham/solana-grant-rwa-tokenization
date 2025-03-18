@@ -2,7 +2,10 @@ import { BN, Program, web3 } from "@coral-xyz/anchor";
 import { explorerUrl, getConfig } from "./helpers";
 import { RwaTokenization } from "../target/types/rwa_tokenization";
 import * as idlRwaTokenization from "../target/idl/rwa_tokenization.json";
+import { TokenTransferHook } from "../target/types/token_transfer_hook";
+import * as idlTokenTransferHook from "../target/idl/token_transfer_hook.json";
 import {
+  address,
   addSignersToTransactionMessage,
   appendTransactionMessageInstruction,
   createTransactionMessage,
@@ -19,6 +22,15 @@ import {
   fromLegacyPublicKey,
   fromLegacyTransactionInstruction,
 } from "@solana/compat";
+import {
+  createTransferCheckedWithTransferHookInstruction,
+  getAssociatedTokenAddressSync,
+  TOKEN_2022_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  getCreateAssociatedTokenInstruction,
+  TOKEN_2022_PROGRAM_ADDRESS,
+} from "@solana-program/token-2022";
 
 (async () => {
   const {
@@ -29,6 +41,7 @@ import {
     minternftMetadata,
     consumernftMetadata,
     tokenUri,
+    connection,
   } = await getConfig();
   const addressEncoder = getAddressEncoder();
   const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
@@ -36,7 +49,7 @@ import {
 
   const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
-  const transferHookProgram = web3.Keypair.generate().publicKey;
+  const transferHookProgram = idlTokenTransferHook.address;
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -135,11 +148,6 @@ import {
       )}`
     );
   }
-
-  const [minterNftAccount] = await getProgramDerivedAddress({
-    programAddress: fromLegacyPublicKey(program.programId),
-    seeds: [Buffer.from("minter"), addressEncoder.encode(minter.address)],
-  });
 
   // update quota credits for minter nft
   {
@@ -311,5 +319,117 @@ import {
         getSignatureFromTransaction(signedTransactionMintNft)
       )}`
     );
+  }
+
+  // try to transfer carbon credits token
+  {
+    const [nftMinterMintAddress] = await getProgramDerivedAddress({
+      programAddress: fromLegacyPublicKey(program.programId),
+      seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
+    });
+
+    const [carbonCreditsMintAddress] = await getProgramDerivedAddress({
+      programAddress: fromLegacyPublicKey(program.programId),
+      seeds: [Buffer.from("cct"), addressEncoder.encode(nftMinterMintAddress)],
+    });
+
+    const senderAta = getAssociatedTokenAddressSync(
+      new web3.PublicKey(carbonCreditsMintAddress),
+      new web3.PublicKey(minter.address),
+      false,
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    const receiverAta = getAssociatedTokenAddressSync(
+      new web3.PublicKey(carbonCreditsMintAddress),
+      new web3.PublicKey(consumer1.address),
+      false,
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    {
+      console.log("Create associated token account for receiver");
+      let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+      const transaction = pipe(
+        createTransactionMessage({
+          version: 0,
+        }),
+        (tx) => setTransactionMessageFeePayer(admin.address, tx),
+        (tx) =>
+          setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+        (tx) =>
+          appendTransactionMessageInstruction(
+            getCreateAssociatedTokenInstruction({
+              payer: payer,
+              mint: carbonCreditsMintAddress,
+              tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+              owner: consumer1.address,
+              ata: address(receiverAta.toString()),
+            }),
+            tx
+          ),
+        (tx) => addSignersToTransactionMessage([admin], tx)
+      );
+
+      const signedTransaction = await signTransactionMessageWithSigners(
+        transaction
+      );
+
+      await sendAndConfirmTransaction(signedTransaction, {
+        commitment: "confirmed",
+      });
+
+      console.info(
+        `Token carbon credits associated account created: ${explorerUrl(
+          getSignatureFromTransaction(signedTransaction)
+        )}`
+      );
+    }
+
+    {
+      console.info("Transfer 10 carbon credits token from minter to receiver");
+      const ix = await createTransferCheckedWithTransferHookInstruction(
+        connection,
+        senderAta,
+        new web3.PublicKey(carbonCreditsMintAddress),
+        receiverAta,
+        new web3.PublicKey(minter.address),
+        BigInt(10),
+        0,
+        [],
+        "confirmed",
+        TOKEN_2022_PROGRAM_ID
+      );
+
+      let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+      const transaction = pipe(
+        createTransactionMessage({
+          version: 0,
+        }),
+        (tx) => setTransactionMessageFeePayer(admin.address, tx),
+        (tx) =>
+          setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+        (tx) =>
+          appendTransactionMessageInstruction(
+            fromLegacyTransactionInstruction(ix),
+            tx
+          ),
+        (tx) => addSignersToTransactionMessage([admin, minter], tx)
+      );
+
+      const signedTransaction = await signTransactionMessageWithSigners(
+        transaction
+      );
+
+      await sendAndConfirmTransaction(signedTransaction, {
+        commitment: "confirmed",
+      });
+
+      console.info(
+        `Token carbon credits transferred: ${explorerUrl(
+          getSignatureFromTransaction(signedTransaction)
+        )}`
+      );
+    }
   }
 })();
