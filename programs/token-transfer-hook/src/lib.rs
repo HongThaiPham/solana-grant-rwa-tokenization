@@ -155,21 +155,21 @@ pub struct TransferHook<'info> {
     pub extra_account_meta_list: UncheckedAccount<'info>,
     /// CHECK: Program id issue the certificate nft
     pub rwa_program: AccountInfo<'info>,
-    // #[account(
-    //     constraint = source_mint_nft.decimals == 0,
-    //     constraint = source_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
-    //     seeds = [b"certificate", source_token.owner.as_ref()],
-    //     bump,
-    //     seeds::program = cert_program,
-    // )]
+    #[account(
+        constraint = source_mint_nft.decimals == 0,
+        constraint = source_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
+        seeds = [b"c", source_token.owner.as_ref()],
+        bump,
+        seeds::program = rwa_program,
+    )]
     pub source_mint_nft: Box<InterfaceAccount<'info, Mint>>,
-    // #[account(
-    //     constraint = destination_mint_nft.decimals == 0,
-    //     constraint = destination_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
-    //     seeds = [b"certificate", destination_token.owner.as_ref()],
-    //     bump,
-    //     seeds::program = cert_program,
-    // )]
+    #[account(
+        constraint = destination_mint_nft.decimals == 0,
+        constraint = destination_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
+        seeds = [b"c", destination_token.owner.as_ref()],
+        bump,
+        seeds::program = rwa_program,
+    )]
     pub destination_mint_nft: Box<InterfaceAccount<'info, Mint>>,
 }
 

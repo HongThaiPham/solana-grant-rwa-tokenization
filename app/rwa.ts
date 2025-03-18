@@ -8,6 +8,7 @@ import {
   address,
   addSignersToTransactionMessage,
   appendTransactionMessageInstruction,
+  appendTransactionMessageInstructions,
   createTransactionMessage,
   generateKeyPairSigner,
   getAddressEncoder,
@@ -45,11 +46,14 @@ import {
   } = await getConfig();
   const addressEncoder = getAddressEncoder();
   const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
+  const transferHookProgram = new Program<TokenTransferHook>(
+    idlTokenTransferHook,
+    provider
+  );
   const admin = payer;
 
   const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
-  const transferHookProgram = idlTokenTransferHook.address;
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -236,6 +240,15 @@ import {
   }
 
   // init token carbon credits mint
+  const [nftMinterMintAddress] = await getProgramDerivedAddress({
+    programAddress: fromLegacyPublicKey(program.programId),
+    seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
+  });
+
+  const [carbonCreditsMintAddress] = await getProgramDerivedAddress({
+    programAddress: fromLegacyPublicKey(program.programId),
+    seeds: [Buffer.from("cct"), addressEncoder.encode(nftMinterMintAddress)],
+  });
   {
     console.info("Init token carbon credits mint");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
@@ -245,9 +258,19 @@ import {
       .accounts({
         payer: admin.address,
         creator: minter.address,
-        transferHookProgram,
+        transferHookProgram: transferHookProgram.programId,
       })
       .instruction();
+
+    const initializeExtraAccountMetaListInstruction =
+      await transferHookProgram.methods
+        .initializeExtraAccountMetaList()
+        .accounts({
+          payer: payer.address,
+          mint: carbonCreditsMintAddress,
+          rwaProgram: program.programId,
+        })
+        .instruction();
 
     const transactionMintNftMessage = pipe(
       createTransactionMessage({
@@ -256,8 +279,13 @@ import {
       (tx) => setTransactionMessageFeePayer(admin.address, tx),
       (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
       (tx) =>
-        appendTransactionMessageInstruction(
-          fromLegacyTransactionInstruction(initializeTokenMint),
+        appendTransactionMessageInstructions(
+          [
+            fromLegacyTransactionInstruction(initializeTokenMint),
+            fromLegacyTransactionInstruction(
+              initializeExtraAccountMetaListInstruction
+            ),
+          ],
           tx
         ),
       (tx) => addSignersToTransactionMessage([admin, minter], tx)
@@ -288,7 +316,7 @@ import {
       .accounts({
         creator: minter.address,
         payer: admin.address,
-        transferHookProgram,
+        transferHookProgram: transferHookProgram.programId,
       })
       .instruction();
 
@@ -323,16 +351,6 @@ import {
 
   // try to transfer carbon credits token
   {
-    const [nftMinterMintAddress] = await getProgramDerivedAddress({
-      programAddress: fromLegacyPublicKey(program.programId),
-      seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
-    });
-
-    const [carbonCreditsMintAddress] = await getProgramDerivedAddress({
-      programAddress: fromLegacyPublicKey(program.programId),
-      seeds: [Buffer.from("cct"), addressEncoder.encode(nftMinterMintAddress)],
-    });
-
     const senderAta = getAssociatedTokenAddressSync(
       new web3.PublicKey(carbonCreditsMintAddress),
       new web3.PublicKey(minter.address),
@@ -385,6 +403,54 @@ import {
         )}`
       );
     }
+
+    {
+      console.info("Issue consumer cert nft for minter to transfer");
+      let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+      const instruction = await program.methods
+        .issueConsumerCert(
+          consumernftMetadata.name,
+          consumernftMetadata.symbol,
+          consumernftMetadata.uri
+        )
+        .accounts({
+          receiver: minter.address,
+        })
+        .instruction();
+
+      const transaction = pipe(
+        createTransactionMessage({
+          version: 0,
+        }),
+        (tx) => setTransactionMessageFeePayer(admin.address, tx),
+        (tx) =>
+          setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+        (tx) =>
+          appendTransactionMessageInstruction(
+            fromLegacyTransactionInstruction(instruction),
+            tx
+          ),
+        (tx) => addSignersToTransactionMessage([admin], tx)
+      );
+
+      const signedTransaction = await signTransactionMessageWithSigners(
+        transaction
+      );
+
+      await sendAndConfirmTransaction(signedTransaction, {
+        commitment: "confirmed",
+      });
+
+      console.info(
+        `Consumer NFT minted tx: ${explorerUrl(
+          getSignatureFromTransaction(signedTransaction)
+        )}`
+      );
+    }
+
+    // wait for init account
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     {
       console.info("Transfer 10 carbon credits token from minter to receiver");
