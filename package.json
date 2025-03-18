@@ -13,6 +13,8 @@
     "test:rwa": "tsx app/rwa.ts"
   },
   "dependencies": {
+    "@codama/nodes-from-anchor": "^1.1.8",
+    "@codama/renderers": "^1.0.16",
     "@coral-xyz/anchor": "^0.31.0",
     "@solana-program/system": "^0.7.0",
     "@solana-program/token-2022": "^0.4.0",
@@ -20,6 +22,7 @@
     "@solana/kit": "^2.1.0",
     "@solana/spl-token": "^0.4.13",
     "@solana/spl-token-metadata": "^0.1.6",
+    "codama": "^1.2.8",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {

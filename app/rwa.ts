@@ -32,6 +32,8 @@ import {
   getCreateAssociatedTokenInstruction,
   TOKEN_2022_PROGRAM_ADDRESS,
 } from "@solana-program/token-2022";
+import { getIssueMinterCertInstruction } from "../codama/rwa-tokenization/generated";
+import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 
 (async () => {
   const {
@@ -114,16 +116,32 @@ import {
     console.info("Issue minter cert nft");
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
-    const issueNftInstruction = await program.methods
-      .issueMinterCert(
-        minternftMetadata.name,
-        minternftMetadata.symbol,
-        minternftMetadata.uri
-      )
-      .accounts({
-        receiver: minter.address,
-      })
-      .instruction();
+    // const issueNftInstruction = await program.methods
+    //   .issueMinterCert(
+    //     minternftMetadata.name,
+    //     minternftMetadata.symbol,
+    //     minternftMetadata.uri
+    //   )
+    //   .accounts({
+    //     receiver: minter.address,
+    //   })
+    //   .instruction();
+
+    const [mint] = await getProgramDerivedAddress({
+      programAddress: fromLegacyPublicKey(program.programId),
+      seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
+    });
+
+    getAssociatedTokenAddressSync;
+
+    const [receiverTokenAccount] = await getProgramDerivedAddress({
+      programAddress: fromLegacyPublicKey(ASSOCIATED_PROGRAM_ID),
+      seeds: [
+        addressEncoder.encode(minter.address),
+        addressEncoder.encode(TOKEN_2022_PROGRAM_ADDRESS),
+        addressEncoder.encode(mint),
+      ],
+    });
 
     const transactionMintNftMessage = pipe(
       createTransactionMessage({
@@ -133,7 +151,17 @@ import {
       (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
       (tx) =>
         appendTransactionMessageInstruction(
-          fromLegacyTransactionInstruction(issueNftInstruction),
+          getIssueMinterCertInstruction({
+            configAccount: governanceConfigAccount,
+            authority: admin,
+            receiver: minter.address,
+            mint,
+            name: minternftMetadata.name,
+            symbol: minternftMetadata.symbol,
+            uri: minternftMetadata.uri,
+            receiverTokenAccount,
+          }),
+          // fromLegacyTransactionInstruction(issueNftInstruction),
           tx
         ),
       (tx) => addSignersToTransactionMessage([admin], tx)
