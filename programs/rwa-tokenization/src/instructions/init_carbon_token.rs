@@ -1,21 +1,34 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    system_program::{create_account, CreateAccount},
+};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::{
+        initialize_mint2,
         spl_token_2022::{self, extension::ExtensionType},
-        Token2022,
+        InitializeMint2, Token2022,
     },
     token_interface::{
+        metadata_pointer_initialize, mint_close_authority_initialize,
         spl_pod::optional_keys::OptionalNonZeroPubkey,
-        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
-        TokenAccount, TokenMetadataInitialize,
+        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize,
+        transfer_hook_initialize, MetadataPointerInitialize, Mint, MintCloseAuthorityInitialize,
+        TokenAccount, TokenMetadataInitialize, TransferHookInitialize,
     },
 };
 
 use crate::{
-    update_account_minimun_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED,
+    get_mint_space_with_extensions, update_account_lamports_to_minimum_balance,
+    update_account_minimum_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED,
     MINT_AUTHORITY_SEED,
 };
+
+const EXTENSIONS: &[ExtensionType] = &[
+    ExtensionType::MetadataPointer,
+    ExtensionType::MintCloseAuthority,
+    ExtensionType::TransferHook,
+];
 
 #[derive(Accounts)]
 pub struct InitCarbonToken<'info> {
@@ -31,21 +44,24 @@ pub struct InitCarbonToken<'info> {
         bump
     )]
     pub mint_authority: Box<Account<'info, MintAuthority>>,
+    /// CHECK: This is transfer hook program
     #[account(
         init,
         payer = payer,
-        mint::token_program = token_program,
-        mint::authority = mint_authority,
-        mint::decimals = 0,
-        extensions::metadata_pointer::authority = mint_authority,
-        extensions::metadata_pointer::metadata_address = mint,
-        extensions::close_authority::authority = mint_authority,
-        extensions::transfer_hook::program_id = transfer_hook_program,
-        extensions::transfer_hook::authority = mint_authority,
+        space = get_mint_space_with_extensions(EXTENSIONS)?,
+        // mint::token_program = token_program,
+        // mint::authority = mint_authority,
+        // mint::decimals = 0,
+        // extensions::metadata_pointer::authority = mint_authority,
+        // extensions::metadata_pointer::metadata_address = mint,
+        // extensions::close_authority::authority = mint_authority,
+        // extensions::transfer_hook::program_id = transfer_hook_program,
+        // extensions::transfer_hook::authority = mint_authority,
         seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
-        bump
+        bump,
+        owner = token_program.key()
     )]
-    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    pub mint: UncheckedAccount<'info>,
     #[account(
         mint::token_program = token_program,
         mint::decimals = 0,
@@ -61,6 +77,7 @@ pub struct InitCarbonToken<'info> {
     )]
     pub minter_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// CHECK: This is transfer hook program
+    #[account(executable)]
     pub transfer_hook_program: AccountInfo<'info>,
     pub token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -81,8 +98,72 @@ impl<'info> InitCarbonToken<'info> {
             transfer_hook: self.transfer_hook_program.key(),
             bump: bump.mint_authority,
         });
-        self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
+        self.init_extensions_and_mint()?;
+
         self.init_nft_metadata(name, symbol, uri)?;
+
+        update_account_lamports_to_minimum_balance(
+            self.mint.to_account_info(),
+            self.payer.to_account_info(),
+            self.system_program.to_account_info(),
+        )?;
+        Ok(())
+    }
+
+    fn init_extensions_and_mint(&mut self) -> Result<()> {
+        // Some extensions require init before mint
+
+        // Init metadata pointer
+        metadata_pointer_initialize(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                MetadataPointerInitialize {
+                    mint: self.mint.to_account_info(),
+                    token_program_id: self.token_program.to_account_info(),
+                },
+            ),
+            Some(self.mint_authority.key()),
+            Some(self.mint.key()),
+        )?;
+
+        // init mint close authority
+
+        mint_close_authority_initialize(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                MintCloseAuthorityInitialize {
+                    mint: self.mint.to_account_info(),
+                    token_program_id: self.token_program.to_account_info(),
+                },
+            ),
+            Some(self.mint_authority.to_account_info().key),
+        )?;
+
+        // init transfer hook
+        transfer_hook_initialize(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                TransferHookInitialize {
+                    mint: self.mint.to_account_info(),
+                    token_program_id: self.token_program.to_account_info(),
+                },
+            ),
+            Some(self.mint_authority.key()),
+            Some(self.transfer_hook_program.key()),
+        )?;
+
+        initialize_mint2(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                InitializeMint2 {
+                    mint: self.mint.to_account_info(),
+                },
+            ),
+            0,                                // decimals
+            &self.mint_authority.key(),       // mint authority
+            Some(&self.mint_authority.key()), // freeze authority
+        )?;
+
         Ok(())
     }
 
@@ -113,40 +194,6 @@ impl<'info> InitCarbonToken<'info> {
             uri,
         )?;
 
-        Ok(())
-    }
-
-    fn update_account_lamports_by_extensions(
-        &mut self,
-        name: String,
-        symbol: String,
-        uri: String,
-    ) -> Result<()> {
-        let token_metadata = TokenMetadata {
-            update_authority: OptionalNonZeroPubkey(self.mint_authority.key()),
-            mint: self.mint.key(),
-            name: name.to_string(),
-            symbol: symbol.to_string(),
-            uri: uri.to_string(),
-            ..Default::default()
-        };
-
-        let space = ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(&[
-            ExtensionType::MetadataPointer,
-            ExtensionType::TransferHook,
-        ])
-        .unwrap();
-
-        let meta_data_space = token_metadata.tlv_size_of().unwrap();
-
-        let total_space = space + meta_data_space;
-
-        update_account_minimun_lamports(
-            self.mint.to_account_info(),
-            self.payer.to_account_info(),
-            self.system_program.to_account_info(),
-            total_space,
-        )?;
         Ok(())
     }
 }

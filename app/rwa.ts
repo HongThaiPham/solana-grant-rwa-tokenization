@@ -310,7 +310,6 @@ import {
       )}`
     );
   }
-
   // mint more carbon credits token
   {
     console.log("--------------------");
