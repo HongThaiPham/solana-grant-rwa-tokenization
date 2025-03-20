@@ -1,18 +1,11 @@
-use anchor_lang::{
-    prelude::*,
-    system_program::{create_account, CreateAccount},
-};
+use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::{
-        initialize_mint2,
-        spl_token_2022::{self, extension::ExtensionType},
-        InitializeMint2, Token2022,
+        initialize_mint2, spl_token_2022::extension::ExtensionType, InitializeMint2, Token2022,
     },
     token_interface::{
-        metadata_pointer_initialize, mint_close_authority_initialize,
-        spl_pod::optional_keys::OptionalNonZeroPubkey,
-        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize,
+        metadata_pointer_initialize, mint_close_authority_initialize, token_metadata_initialize,
         transfer_fee_initialize, transfer_hook_initialize, MetadataPointerInitialize, Mint,
         MintCloseAuthorityInitialize, TokenAccount, TokenMetadataInitialize, TransferFeeInitialize,
         TransferHookInitialize,
@@ -20,9 +13,8 @@ use anchor_spl::{
 };
 
 use crate::{
-    get_mint_space_with_extensions, update_account_lamports_to_minimum_balance,
-    update_account_minimum_lamports, MintAuthority, CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED,
-    MINT_AUTHORITY_SEED,
+    get_mint_space_with_extensions, update_account_lamports_to_minimum_balance, MintAuthority,
+    CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
 };
 
 const EXTENSIONS: &[ExtensionType] = &[
@@ -51,14 +43,6 @@ pub struct InitCarbonToken<'info> {
         init,
         payer = payer,
         space = get_mint_space_with_extensions(EXTENSIONS)?,
-        // mint::token_program = token_program,
-        // mint::authority = mint_authority,
-        // mint::decimals = 0,
-        // extensions::metadata_pointer::authority = mint_authority,
-        // extensions::metadata_pointer::metadata_address = mint,
-        // extensions::close_authority::authority = mint_authority,
-        // extensions::transfer_hook::program_id = transfer_hook_program,
-        // extensions::transfer_hook::authority = mint_authority,
         seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
         bump,
         owner = token_program.key()
