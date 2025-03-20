@@ -18,8 +18,12 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU16Decoder,
+  getU16Encoder,
   getU32Decoder,
   getU32Encoder,
+  getU64Decoder,
+  getU64Encoder,
   getUtf8Decoder,
   getUtf8Encoder,
   transformEncoder,
@@ -119,12 +123,16 @@ export type InitCarbonTokenInstructionData = {
   name: string;
   symbol: string;
   uri: string;
+  transferFeeBasisPoints: number;
+  maximumFee: bigint;
 };
 
 export type InitCarbonTokenInstructionDataArgs = {
   name: string;
   symbol: string;
   uri: string;
+  transferFeeBasisPoints: number;
+  maximumFee: number | bigint;
 };
 
 export function getInitCarbonTokenInstructionDataEncoder(): Encoder<InitCarbonTokenInstructionDataArgs> {
@@ -134,6 +142,8 @@ export function getInitCarbonTokenInstructionDataEncoder(): Encoder<InitCarbonTo
       ['name', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       ['symbol', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       ['uri', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['transferFeeBasisPoints', getU16Encoder()],
+      ['maximumFee', getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: INIT_CARBON_TOKEN_DISCRIMINATOR })
   );
@@ -145,6 +155,8 @@ export function getInitCarbonTokenInstructionDataDecoder(): Decoder<InitCarbonTo
     ['name', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     ['symbol', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     ['uri', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['transferFeeBasisPoints', getU16Decoder()],
+    ['maximumFee', getU64Decoder()],
   ]);
 }
 
@@ -183,6 +195,8 @@ export type InitCarbonTokenAsyncInput<
   name: InitCarbonTokenInstructionDataArgs['name'];
   symbol: InitCarbonTokenInstructionDataArgs['symbol'];
   uri: InitCarbonTokenInstructionDataArgs['uri'];
+  transferFeeBasisPoints: InitCarbonTokenInstructionDataArgs['transferFeeBasisPoints'];
+  maximumFee: InitCarbonTokenInstructionDataArgs['maximumFee'];
 };
 
 export async function getInitCarbonTokenInstructionAsync<
@@ -372,6 +386,8 @@ export type InitCarbonTokenInput<
   name: InitCarbonTokenInstructionDataArgs['name'];
   symbol: InitCarbonTokenInstructionDataArgs['symbol'];
   uri: InitCarbonTokenInstructionDataArgs['uri'];
+  transferFeeBasisPoints: InitCarbonTokenInstructionDataArgs['transferFeeBasisPoints'];
+  maximumFee: InitCarbonTokenInstructionDataArgs['maximumFee'];
 };
 
 export function getInitCarbonTokenInstruction<

@@ -24,7 +24,7 @@ import {
 } from '../instructions';
 
 export const RWA_TOKENIZATION_PROGRAM_ADDRESS =
-  '66A211WXh9NJUXbepAkx3EriziiPHdWLxiKQwFFkW8iD' as Address<'66A211WXh9NJUXbepAkx3EriziiPHdWLxiKQwFFkW8iD'>;
+  '49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4' as Address<'49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4'>;
 
 export enum RwaTokenizationAccount {
   GovernanceConfig,
@@ -159,7 +159,7 @@ export function identifyRwaTokenizationInstruction(
 }
 
 export type ParsedRwaTokenizationInstruction<
-  TProgram extends string = '66A211WXh9NJUXbepAkx3EriziiPHdWLxiKQwFFkW8iD',
+  TProgram extends string = '49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4',
 > =
   | ({
       instructionType: RwaTokenizationInstruction.InitCarbonToken;
