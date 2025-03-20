@@ -13,8 +13,9 @@ use anchor_spl::{
         metadata_pointer_initialize, mint_close_authority_initialize,
         spl_pod::optional_keys::OptionalNonZeroPubkey,
         spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize,
-        transfer_hook_initialize, MetadataPointerInitialize, Mint, MintCloseAuthorityInitialize,
-        TokenAccount, TokenMetadataInitialize, TransferHookInitialize,
+        transfer_fee_initialize, transfer_hook_initialize, MetadataPointerInitialize, Mint,
+        MintCloseAuthorityInitialize, TokenAccount, TokenMetadataInitialize, TransferFeeInitialize,
+        TransferHookInitialize,
     },
 };
 
@@ -28,6 +29,7 @@ const EXTENSIONS: &[ExtensionType] = &[
     ExtensionType::MetadataPointer,
     ExtensionType::MintCloseAuthority,
     ExtensionType::TransferHook,
+    ExtensionType::TransferFeeConfig,
 ];
 
 #[derive(Accounts)]
@@ -90,6 +92,8 @@ impl<'info> InitCarbonToken<'info> {
         name: String,
         symbol: String,
         uri: String,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
         bump: &InitCarbonTokenBumps,
     ) -> Result<()> {
         self.mint_authority.set_inner(MintAuthority {
@@ -98,7 +102,7 @@ impl<'info> InitCarbonToken<'info> {
             transfer_hook: self.transfer_hook_program.key(),
             bump: bump.mint_authority,
         });
-        self.init_extensions_and_mint()?;
+        self.init_extensions_and_mint(transfer_fee_basis_points, maximum_fee)?;
 
         self.init_nft_metadata(name, symbol, uri)?;
 
@@ -110,8 +114,12 @@ impl<'info> InitCarbonToken<'info> {
         Ok(())
     }
 
-    fn init_extensions_and_mint(&mut self) -> Result<()> {
-        // Some extensions require init before mint
+    fn init_extensions_and_mint(
+        &mut self,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
+    ) -> Result<()> {
+        // Some extensions init must come before the instruction to initialize the mint data
 
         // Init metadata pointer
         metadata_pointer_initialize(
@@ -136,7 +144,7 @@ impl<'info> InitCarbonToken<'info> {
                     token_program_id: self.token_program.to_account_info(),
                 },
             ),
-            Some(self.mint_authority.to_account_info().key),
+            Some(&self.mint_authority.key()),
         )?;
 
         // init transfer hook
@@ -150,6 +158,21 @@ impl<'info> InitCarbonToken<'info> {
             ),
             Some(self.mint_authority.key()),
             Some(self.transfer_hook_program.key()),
+        )?;
+
+        // init transfer fee config
+        transfer_fee_initialize(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                TransferFeeInitialize {
+                    token_program_id: self.token_program.to_account_info(),
+                    mint: self.mint.to_account_info(),
+                },
+            ),
+            Some(&self.mint_authority.key()), // transfer fee config authority (update fee)
+            Some(&self.mint_authority.key()), // withdraw authority (withdraw fees)
+            transfer_fee_basis_points,        // transfer fee basis points (% fee per transfer)
+            maximum_fee,                      // maximum fee (maximum units of token per transfer)
         )?;
 
         initialize_mint2(

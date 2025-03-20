@@ -54,6 +54,10 @@ import {
 
   const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
+  // Fee basis points for transfers (100 = 1%)
+  const feeBasisPoints = 100;
+  // Maximum fee for transfers in token base units
+  const maxFee = new BN(100);
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -259,7 +263,7 @@ import {
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const initializeTokenMint = await program.methods
-      .initCarbonToken("Carbon Credits", "CC", tokenUri)
+      .initCarbonToken("Carbon Credits", "CC", tokenUri, feeBasisPoints, maxFee)
       .accounts({
         payer: admin.address,
         creator: minter.address,
@@ -510,13 +514,13 @@ import {
     {
       console.log("--------------------");
       console.info(
-        "Retire 10 carbon credits token from consumer and receive nft certificate"
+        "Retire 5 carbon credits token from consumer and receive nft certificate"
       );
       let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const nftMint = await generateKeyPairSigner();
 
       const instruction = await program.methods
-        .retireToken(new BN(10))
+        .retireToken(new BN(5))
         .accounts({
           payer: admin.address,
           consumer: consumer1.address,
