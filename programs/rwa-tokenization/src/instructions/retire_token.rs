@@ -16,7 +16,7 @@ use anchor_spl::{
 };
 
 use crate::{
-    error::MyErrorCode, update_account_minimun_lamports, MintAuthority, MINT_AUTHORITY_SEED,
+    error::MyErrorCode, update_account_minimum_lamports, MintAuthority, MINT_AUTHORITY_SEED,
     RETIRED_CREDITS_CERT_NAME, RETIRED_CREDITS_CERT_SYMBOL, RETIRED_CREDITS_KEY,
 };
 
@@ -213,7 +213,7 @@ impl<'info> RetireToken<'info> {
 
         let total_space = space + meta_data_space;
 
-        update_account_minimun_lamports(
+        update_account_minimum_lamports(
             self.nft_mint.to_account_info(),
             self.payer.to_account_info(),
             self.system_program.to_account_info(),

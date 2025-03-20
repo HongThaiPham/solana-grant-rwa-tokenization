@@ -17,7 +17,7 @@ use anchor_spl::{
 };
 
 use crate::{
-    update_account_minimun_lamports, GovernanceConfig, AVAILABLE_CREDITS_KEY,
+    update_account_minimum_lamports, GovernanceConfig, AVAILABLE_CREDITS_KEY,
     GOVERNANCE_CONFIG_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED,
 };
 
@@ -188,7 +188,7 @@ impl<'info> IssueMinterCert<'info> {
 
         let total_space = space + meta_data_space;
 
-        update_account_minimun_lamports(
+        update_account_minimum_lamports(
             self.mint.to_account_info(),
             self.authority.to_account_info(),
             self.system_program.to_account_info(),

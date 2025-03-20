@@ -11,7 +11,7 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("66A211WXh9NJUXbepAkx3EriziiPHdWLxiKQwFFkW8iD");
+declare_id!("49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4");
 
 #[program]
 pub mod rwa_tokenization {
@@ -48,8 +48,17 @@ pub mod rwa_tokenization {
         name: String,
         symbol: String,
         uri: String,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
     ) -> Result<()> {
-        ctx.accounts.handler(name, symbol, uri, &ctx.bumps)
+        ctx.accounts.handler(
+            name,
+            symbol,
+            uri,
+            transfer_fee_basis_points,
+            maximum_fee,
+            &ctx.bumps,
+        )
     }
 
     pub fn mint_carbon_token(ctx: Context<MintCarbonToken>, amount: u64) -> Result<()> {
