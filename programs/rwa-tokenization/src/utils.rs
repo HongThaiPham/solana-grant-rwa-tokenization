@@ -49,8 +49,32 @@ pub fn update_account_lamports_to_minimum_balance<'info>(
     Ok(())
 }
 
-pub fn get_mint_space_with_extensions(exts: &[ExtensionType]) -> Result<usize> {
+pub fn get_mint_space_with_extensions(is_close: bool, has_fee: bool) -> Result<usize> {
+    msg!("is_close: {}, has_fee: {}", is_close, has_fee);
+    let extensions: &[ExtensionType] = match (is_close, has_fee) {
+        (true, true) => &[
+            ExtensionType::MetadataPointer,
+            ExtensionType::MintCloseAuthority,
+            ExtensionType::TransferHook,
+            ExtensionType::TransferFeeConfig,
+        ],
+        (true, false) => &[
+            ExtensionType::MetadataPointer,
+            ExtensionType::MintCloseAuthority,
+            ExtensionType::TransferHook,
+        ],
+        (false, true) => &[
+            ExtensionType::MetadataPointer,
+            ExtensionType::MintCloseAuthority,
+            ExtensionType::TransferFeeConfig,
+        ],
+        (false, false) => &[
+            ExtensionType::MetadataPointer,
+            ExtensionType::MintCloseAuthority,
+        ],
+    };
+
     Ok(ExtensionType::try_calculate_account_len::<
         spl_token_2022::state::Mint,
-    >(exts)?)
+    >(extensions)?)
 }

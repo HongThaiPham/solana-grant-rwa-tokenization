@@ -29,7 +29,6 @@ pub struct RetireToken<'info> {
     pub consumer: Signer<'info>,
     #[account(
       constraint = mint_authority.mint == mint.key(),
-      constraint = mint_authority.transfer_hook == transfer_hook_program.key(),
       seeds = [MINT_AUTHORITY_SEED, mint.key().as_ref()],
       bump = mint_authority.bump,
     )]
@@ -66,8 +65,7 @@ pub struct RetireToken<'info> {
       associated_token::authority = consumer
     )]
     pub consumer_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-    /// CHECK: This is transfer hook program
-    pub transfer_hook_program: AccountInfo<'info>,
+
     pub token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,

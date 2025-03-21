@@ -48,13 +48,17 @@ pub mod rwa_tokenization {
         name: String,
         symbol: String,
         uri: String,
-        transfer_fee_basis_points: u16,
-        maximum_fee: u64,
+        is_close: bool, // whether the mint use transfer hook extension
+        has_fee: bool,  // whether the mint use transfer fee extension
+        transfer_fee_basis_points: Option<u16>,
+        maximum_fee: Option<u64>,
     ) -> Result<()> {
         ctx.accounts.handler(
             name,
             symbol,
             uri,
+            is_close,
+            has_fee,
             transfer_fee_basis_points,
             maximum_fee,
             &ctx.bumps,

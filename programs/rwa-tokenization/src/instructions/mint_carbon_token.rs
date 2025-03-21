@@ -35,7 +35,7 @@ pub struct MintCarbonToken<'info> {
     #[account(
         constraint = mint_authority.authority == creator.key(),
         constraint = mint_authority.mint == mint.key(),
-        constraint = mint_authority.transfer_hook == transfer_hook_program.key(),
+        // constraint = mint_authority.transfer_hook == transfer_hook_program.key(),
         seeds = [MINT_AUTHORITY_SEED, mint.key().as_ref()],
         bump = mint_authority.bump,
     )]
@@ -48,8 +48,8 @@ pub struct MintCarbonToken<'info> {
         extensions::metadata_pointer::authority = mint_authority,
         extensions::metadata_pointer::metadata_address = mint,
         extensions::close_authority::authority = mint_authority,
-        extensions::transfer_hook::program_id = transfer_hook_program,
-        extensions::transfer_hook::authority = mint_authority,
+        // extensions::transfer_hook::program_id = transfer_hook_program,
+        // extensions::transfer_hook::authority = mint_authority,
         seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
         bump
     )]
@@ -77,8 +77,8 @@ pub struct MintCarbonToken<'info> {
         associated_token::authority = creator
     )]
     pub minter_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-    /// CHECK: This is transfer hook program
-    pub transfer_hook_program: AccountInfo<'info>,
+    // /// CHECK: This is transfer hook program
+    // pub transfer_hook_program: AccountInfo<'info>,
     pub token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,

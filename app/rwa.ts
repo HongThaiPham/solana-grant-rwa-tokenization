@@ -14,6 +14,7 @@ import {
   getAddressEncoder,
   getProgramDerivedAddress,
   getSignatureFromTransaction,
+  KeyPairSigner,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -34,30 +35,8 @@ import {
 } from "@solana-program/token-2022";
 
 (async () => {
-  const {
-    payer,
-    rpc,
-    sendAndConfirmTransaction,
-    provider,
-    minternftMetadata,
-    consumernftMetadata,
-    tokenUri,
-    connection,
-  } = await getConfig();
-  const addressEncoder = getAddressEncoder();
+  const { payer, rpc, sendAndConfirmTransaction, provider } = await getConfig();
   const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
-  const transferHookProgram = new Program<TokenTransferHook>(
-    idlTokenTransferHook,
-    provider
-  );
-  const admin = payer;
-
-  const minter = await generateKeyPairSigner();
-  const consumer1 = await generateKeyPairSigner();
-  // Fee basis points for transfers (100 = 1%)
-  const feeBasisPoints = 100;
-  // Maximum fee for transfers in token base units
-  const maxFee = new BN(100);
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -112,6 +91,71 @@ import {
     }
   }
 
+  await test_token_close_and_has_fee();
+  await test_token_open_and_has_fee();
+  await test_token_close_and_no_fee();
+  await test_token_open_and_no_fee();
+})();
+
+const test_token_close_and_no_fee = async () => {
+  console.info("==============================================");
+  console.info("Do the test with token close and no fee");
+  await do_test(true, false);
+  console.info("Do the test with token close and no fee - Test completed");
+};
+const test_token_open_and_no_fee = async () => {
+  console.info("==============================================");
+  console.info("Do the test with token open and no fee");
+  await do_test(false, false);
+  console.info("Do the test with token open and no fee - Test completed");
+};
+
+const test_token_open_and_has_fee = async () => {
+  console.info("==============================================");
+  console.info("Do the test with token open and has fee");
+  // Fee basis points for ctransfers (100 = 1%)
+  const feeBasisPoints = 100;
+  // Maximum fee for transfers in token base units
+  const maxFee = new BN(100);
+  await do_test(false, true, feeBasisPoints, maxFee);
+  console.info("Do the test with token open and has fee - Test completed");
+};
+const test_token_close_and_has_fee = async () => {
+  console.info("==============================================");
+  console.info("Do the test with token close and has fee");
+  // Fee basis points for transfers (100 = 1%)
+  const feeBasisPoints = 100;
+  // Maximum fee for transfers in token base units
+  const maxFee = new BN(100);
+  await do_test(true, true, feeBasisPoints, maxFee);
+  console.info("Do the test with token close and has fee - Test completed");
+};
+
+const do_test = async (
+  isClose: boolean,
+  hasFee: boolean,
+  feeBasisPoints?: number,
+  maxFee?: BN
+) => {
+  const minter = await generateKeyPairSigner();
+  const consumer1 = await generateKeyPairSigner();
+  const {
+    payer,
+    rpc,
+    sendAndConfirmTransaction,
+    provider,
+    minternftMetadata,
+    consumernftMetadata,
+    tokenUri,
+    connection,
+  } = await getConfig();
+  const addressEncoder = getAddressEncoder();
+  const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
+  const transferHookProgram = new Program<TokenTransferHook>(
+    idlTokenTransferHook,
+    provider
+  );
+  const admin = payer;
   // issue a minter cert nft
   {
     console.log("--------------------");
@@ -263,23 +307,33 @@ import {
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const initializeTokenMint = await program.methods
-      .initCarbonToken("Carbon Credits", "CC", tokenUri, feeBasisPoints, maxFee)
+      .initCarbonToken(
+        "Carbon Credits",
+        "CC",
+        tokenUri,
+        isClose,
+        hasFee,
+        feeBasisPoints ?? 0,
+        maxFee ?? new BN(0)
+      )
       .accounts({
         payer: admin.address,
         creator: minter.address,
         transferHookProgram: transferHookProgram.programId,
       })
       .instruction();
-
-    const initializeExtraAccountMetaListInstruction =
-      await transferHookProgram.methods
-        .initializeExtraAccountMetaList()
-        .accounts({
-          payer: payer.address,
-          mint: carbonCreditsMintAddress,
-          rwaProgram: program.programId,
-        })
-        .instruction();
+    let initializeExtraAccountMetaListInstruction;
+    if (isClose) {
+      initializeExtraAccountMetaListInstruction =
+        await transferHookProgram.methods
+          .initializeExtraAccountMetaList()
+          .accounts({
+            payer: payer.address,
+            mint: carbonCreditsMintAddress,
+            rwaProgram: program.programId,
+          })
+          .instruction();
+    }
 
     const transactionMintNftMessage = pipe(
       createTransactionMessage({
@@ -288,15 +342,20 @@ import {
       (tx) => setTransactionMessageFeePayer(admin.address, tx),
       (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
       (tx) =>
-        appendTransactionMessageInstructions(
-          [
-            fromLegacyTransactionInstruction(initializeTokenMint),
-            fromLegacyTransactionInstruction(
-              initializeExtraAccountMetaListInstruction
+        !isClose
+          ? appendTransactionMessageInstruction(
+              fromLegacyTransactionInstruction(initializeTokenMint),
+              tx
+            )
+          : appendTransactionMessageInstructions(
+              [
+                fromLegacyTransactionInstruction(initializeTokenMint),
+                fromLegacyTransactionInstruction(
+                  initializeExtraAccountMetaListInstruction
+                ),
+              ],
+              tx
             ),
-          ],
-          tx
-        ),
       (tx) => addSignersToTransactionMessage([admin, minter], tx)
     );
 
@@ -325,7 +384,6 @@ import {
       .accounts({
         creator: minter.address,
         payer: admin.address,
-        transferHookProgram: transferHookProgram.programId,
       })
       .instruction();
 
@@ -414,7 +472,7 @@ import {
       );
     }
 
-    {
+    if (isClose) {
       console.log("--------------------");
       console.info("Issue consumer cert nft for minter to transfer");
       let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
@@ -560,4 +618,4 @@ import {
       );
     }
   }
-})();
+};

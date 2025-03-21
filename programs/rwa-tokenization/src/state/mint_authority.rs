@@ -5,6 +5,6 @@ use anchor_lang::prelude::*;
 pub struct MintAuthority {
     pub authority: Pubkey,
     pub mint: Pubkey,
-    pub transfer_hook: Pubkey,
+    pub transfer_hook: Option<Pubkey>,
     pub bump: u8,
 }

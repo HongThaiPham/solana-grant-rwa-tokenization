@@ -25,6 +25,13 @@ const EXTENSIONS: &[ExtensionType] = &[
 ];
 
 #[derive(Accounts)]
+#[instruction(
+    name: String,
+    symbol: String,
+    uri: String,
+    is_close: bool,
+    has_fee: bool,
+)]
 pub struct InitCarbonToken<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -42,7 +49,7 @@ pub struct InitCarbonToken<'info> {
     #[account(
         init,
         payer = payer,
-        space = get_mint_space_with_extensions(EXTENSIONS)?,
+        space = get_mint_space_with_extensions(is_close, has_fee)?,
         seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
         bump,
         owner = token_program.key()
@@ -76,17 +83,23 @@ impl<'info> InitCarbonToken<'info> {
         name: String,
         symbol: String,
         uri: String,
-        transfer_fee_basis_points: u16,
-        maximum_fee: u64,
+        is_close: bool,
+        has_fee: bool,
+        transfer_fee_basis_points: Option<u16>,
+        maximum_fee: Option<u64>,
         bump: &InitCarbonTokenBumps,
     ) -> Result<()> {
         self.mint_authority.set_inner(MintAuthority {
             authority: self.creator.key(),
             mint: self.mint.key(),
-            transfer_hook: self.transfer_hook_program.key(),
+            transfer_hook: if is_close {
+                Some(self.transfer_hook_program.key())
+            } else {
+                None
+            },
             bump: bump.mint_authority,
         });
-        self.init_extensions_and_mint(transfer_fee_basis_points, maximum_fee)?;
+        self.init_extensions_and_mint(is_close, has_fee, transfer_fee_basis_points, maximum_fee)?;
 
         self.init_nft_metadata(name, symbol, uri)?;
 
@@ -100,8 +113,10 @@ impl<'info> InitCarbonToken<'info> {
 
     fn init_extensions_and_mint(
         &mut self,
-        transfer_fee_basis_points: u16,
-        maximum_fee: u64,
+        is_close: bool,
+        has_fee: bool,
+        transfer_fee_basis_points: Option<u16>,
+        maximum_fee: Option<u64>,
     ) -> Result<()> {
         // Some extensions init must come before the instruction to initialize the mint data
 
@@ -131,33 +146,37 @@ impl<'info> InitCarbonToken<'info> {
             Some(&self.mint_authority.key()),
         )?;
 
-        // init transfer hook
-        transfer_hook_initialize(
-            CpiContext::new(
-                self.token_program.to_account_info(),
-                TransferHookInitialize {
-                    mint: self.mint.to_account_info(),
-                    token_program_id: self.token_program.to_account_info(),
-                },
-            ),
-            Some(self.mint_authority.key()),
-            Some(self.transfer_hook_program.key()),
-        )?;
+        if is_close {
+            // init transfer hook
+            transfer_hook_initialize(
+                CpiContext::new(
+                    self.token_program.to_account_info(),
+                    TransferHookInitialize {
+                        mint: self.mint.to_account_info(),
+                        token_program_id: self.token_program.to_account_info(),
+                    },
+                ),
+                Some(self.mint_authority.key()),
+                Some(self.transfer_hook_program.key()),
+            )?;
+        }
 
-        // init transfer fee config
-        transfer_fee_initialize(
-            CpiContext::new(
-                self.token_program.to_account_info(),
-                TransferFeeInitialize {
-                    token_program_id: self.token_program.to_account_info(),
-                    mint: self.mint.to_account_info(),
-                },
-            ),
-            Some(&self.mint_authority.key()), // transfer fee config authority (update fee)
-            Some(&self.mint_authority.key()), // withdraw authority (withdraw fees)
-            transfer_fee_basis_points,        // transfer fee basis points (% fee per transfer)
-            maximum_fee,                      // maximum fee (maximum units of token per transfer)
-        )?;
+        if has_fee {
+            // init transfer fee config
+            transfer_fee_initialize(
+                CpiContext::new(
+                    self.token_program.to_account_info(),
+                    TransferFeeInitialize {
+                        token_program_id: self.token_program.to_account_info(),
+                        mint: self.mint.to_account_info(),
+                    },
+                ),
+                Some(&self.mint_authority.key()), // transfer fee config authority (update fee)
+                Some(&self.mint_authority.key()), // withdraw authority (withdraw fees)
+                transfer_fee_basis_points.unwrap(), // transfer fee basis points (% fee per transfer)
+                maximum_fee.unwrap(), // maximum fee (maximum units of token per transfer)
+            )?;
+        }
 
         initialize_mint2(
             CpiContext::new(
