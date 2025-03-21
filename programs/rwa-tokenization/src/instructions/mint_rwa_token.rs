@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[derive(Accounts)]
-pub struct MintCarbonToken<'info> {
+pub struct MintRwaToken<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(mut)]
@@ -84,7 +84,7 @@ pub struct MintCarbonToken<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> MintCarbonToken<'info> {
+impl<'info> MintRwaToken<'info> {
     pub fn handler(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, MyErrorCode::InvalidAmount);
         // read metadata from nft mint

@@ -43,8 +43,8 @@ pub mod rwa_tokenization {
         ctx.accounts.handler(name, symbol, uri)
     }
 
-    pub fn init_carbon_token(
-        ctx: Context<InitCarbonToken>,
+    pub fn init_rwa_token(
+        ctx: Context<InitRwaToken>,
         name: String,
         symbol: String,
         uri: String,
@@ -65,7 +65,7 @@ pub mod rwa_tokenization {
         )
     }
 
-    pub fn mint_carbon_token(ctx: Context<MintCarbonToken>, amount: u64) -> Result<()> {
+    pub fn mint_rwa_token(ctx: Context<MintRwaToken>, amount: u64) -> Result<()> {
         ctx.accounts.handler(amount)
     }
 

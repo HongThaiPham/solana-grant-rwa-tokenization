@@ -14,13 +14,13 @@ pub mod issue_consumer_cert;
 
 pub use issue_consumer_cert::*;
 
-pub mod init_carbon_token;
+pub mod init_rwa_token;
 
-pub use init_carbon_token::*;
+pub use init_rwa_token::*;
 
-pub mod mint_carbon_token;
+pub mod mint_rwa_token;
 
-pub use mint_carbon_token::*;
+pub use mint_rwa_token::*;
 
 pub mod retire_token;
 

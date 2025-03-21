@@ -307,7 +307,7 @@ const do_test = async (
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const initializeTokenMint = await program.methods
-      .initCarbonToken(
+      .initRwaToken(
         "Carbon Credits",
         "CC",
         tokenUri,
@@ -380,7 +380,7 @@ const do_test = async (
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const mintTokenInstruction = await program.methods
-      .mintCarbonToken(new BN(300))
+      .mintRwaToken(new BN(300))
       .accounts({
         creator: minter.address,
         payer: admin.address,

@@ -17,13 +17,6 @@ use crate::{
     CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
 };
 
-const EXTENSIONS: &[ExtensionType] = &[
-    ExtensionType::MetadataPointer,
-    ExtensionType::MintCloseAuthority,
-    ExtensionType::TransferHook,
-    ExtensionType::TransferFeeConfig,
-];
-
 #[derive(Accounts)]
 #[instruction(
     name: String,
@@ -32,7 +25,7 @@ const EXTENSIONS: &[ExtensionType] = &[
     is_close: bool,
     has_fee: bool,
 )]
-pub struct InitCarbonToken<'info> {
+pub struct InitRwaToken<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(mut)]
@@ -77,7 +70,7 @@ pub struct InitCarbonToken<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> InitCarbonToken<'info> {
+impl<'info> InitRwaToken<'info> {
     pub fn handler(
         &mut self,
         name: String,
@@ -87,7 +80,7 @@ impl<'info> InitCarbonToken<'info> {
         has_fee: bool,
         transfer_fee_basis_points: Option<u16>,
         maximum_fee: Option<u64>,
-        bump: &InitCarbonTokenBumps,
+        bump: &InitRwaTokenBumps,
     ) -> Result<()> {
         self.mint_authority.set_inner(MintAuthority {
             authority: self.creator.key(),
