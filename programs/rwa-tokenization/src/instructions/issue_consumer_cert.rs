@@ -14,20 +14,20 @@ use anchor_spl::{
     },
 };
 
-use crate::{
-    update_account_minimum_lamports, GovernanceConfig, CONSUMER_NFT_SEED, GOVERNANCE_CONFIG_SEED,
-};
+use crate::{update_account_minimum_lamports, ConsumerController, CONSUMER_NFT_SEED};
 
 #[derive(Accounts)]
 pub struct IssueConsumerCert<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
-      has_one = authority,
-      seeds = [GOVERNANCE_CONFIG_SEED],
-      bump = config_account.bump
+        init,
+        payer = authority,
+        space = 8 + ConsumerController::INIT_SPACE,
+      seeds = [CONSUMER_NFT_SEED, mint.key.as_ref()],
+      bump
     )]
-    pub config_account: Box<Account<'info, GovernanceConfig>>,
+    pub consumer_controller: Box<Account<'info, ConsumerController>>,
     /// CHECK: This is nft keeper account
     pub receiver: AccountInfo<'info>,
     #[account(
@@ -35,11 +35,11 @@ pub struct IssueConsumerCert<'info> {
       payer = authority,
       mint::token_program = token_program,
       mint::decimals = 0,
-      mint::authority = config_account,
-      extensions::metadata_pointer::authority = config_account,
+      mint::authority = consumer_controller,
+      extensions::metadata_pointer::authority = consumer_controller,
       extensions::metadata_pointer::metadata_address = mint,
-      extensions::close_authority::authority = config_account,
-      extensions::permanent_delegate::delegate = config_account,
+      extensions::close_authority::authority = consumer_controller,
+      extensions::permanent_delegate::delegate = consumer_controller,
       seeds = [CONSUMER_NFT_SEED, receiver.key.as_ref()],
       bump
     )]
@@ -59,7 +59,18 @@ pub struct IssueConsumerCert<'info> {
 }
 
 impl<'info> IssueConsumerCert<'info> {
-    pub fn handler(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
+    pub fn handler(
+        &mut self,
+        name: String,
+        symbol: String,
+        uri: String,
+        bumps: &IssueConsumerCertBumps,
+    ) -> Result<()> {
+        self.consumer_controller.set_inner(ConsumerController {
+            mint: self.mint.key(),
+            user: self.receiver.key(),
+            bump: bumps.consumer_controller,
+        });
         self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
         self.init_nft_metadata(name, symbol, uri)?;
         self.mint_and_send_nft()?;
@@ -67,7 +78,12 @@ impl<'info> IssueConsumerCert<'info> {
     }
 
     fn mint_and_send_nft(&mut self) -> Result<()> {
-        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let mint_key = self.mint.key();
+        let seeds = &[
+            CONSUMER_NFT_SEED,
+            mint_key.as_ref(),
+            &[self.consumer_controller.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
 
         // nint just 1 token, because it's a NFT
@@ -77,7 +93,7 @@ impl<'info> IssueConsumerCert<'info> {
                 MintTo {
                     mint: self.mint.to_account_info(),
                     to: self.receiver_token_account.to_account_info(),
-                    authority: self.config_account.to_account_info(),
+                    authority: self.consumer_controller.to_account_info(),
                 },
                 signer_seeds,
             ),
@@ -89,7 +105,7 @@ impl<'info> IssueConsumerCert<'info> {
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 SetAuthority {
-                    current_authority: self.config_account.to_account_info(),
+                    current_authority: self.consumer_controller.to_account_info(),
                     account_or_mint: self.mint.to_account_info(),
                 },
                 signer_seeds,
@@ -102,7 +118,12 @@ impl<'info> IssueConsumerCert<'info> {
     }
 
     fn init_nft_metadata(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
-        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let mint_key = self.mint.key();
+        let seeds = &[
+            CONSUMER_NFT_SEED,
+            mint_key.as_ref(),
+            &[self.consumer_controller.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
         // init token metadata
 
@@ -112,8 +133,8 @@ impl<'info> IssueConsumerCert<'info> {
                 TokenMetadataInitialize {
                     mint: self.mint.to_account_info(),
                     program_id: self.token_program.to_account_info(),
-                    mint_authority: self.config_account.to_account_info(),
-                    update_authority: self.config_account.to_account_info(),
+                    mint_authority: self.consumer_controller.to_account_info(),
+                    update_authority: self.consumer_controller.to_account_info(),
                     metadata: self.mint.to_account_info(),
                 },
                 signer_seeds,
@@ -133,7 +154,7 @@ impl<'info> IssueConsumerCert<'info> {
         uri: String,
     ) -> Result<()> {
         let token_metadata = TokenMetadata {
-            update_authority: OptionalNonZeroPubkey(self.config_account.key()),
+            update_authority: OptionalNonZeroPubkey(self.consumer_controller.key()),
             mint: self.mint.key(),
             name: name.to_string(),
             symbol: symbol.to_string(),

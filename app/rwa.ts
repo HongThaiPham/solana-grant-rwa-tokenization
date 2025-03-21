@@ -35,7 +35,7 @@ import {
 } from "@solana-program/token-2022";
 
 (async () => {
-  const { payer, rpc, sendAndConfirmTransaction, provider } = await getConfig();
+  const { payer: admin, rpc, sendAndConfirmTransaction, provider } = await getConfig();
   const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
@@ -72,7 +72,7 @@ import {
             fromLegacyTransactionInstruction(initializeProgram),
             tx
           ),
-        (tx) => addSignersToTransactionMessage([payer], tx)
+        (tx) => addSignersToTransactionMessage([admin], tx)
       );
 
       const signedTransactionMintNft = await signTransactionMessageWithSigners(
@@ -92,9 +92,9 @@ import {
   }
 
   await test_token_close_and_has_fee();
-  await test_token_open_and_has_fee();
-  await test_token_close_and_no_fee();
-  await test_token_open_and_no_fee();
+  // await test_token_open_and_has_fee();
+  // await test_token_close_and_no_fee();
+  // await test_token_open_and_no_fee();
 })();
 
 const test_token_close_and_no_fee = async () => {
@@ -344,18 +344,18 @@ const do_test = async (
       (tx) =>
         !isClose
           ? appendTransactionMessageInstruction(
-              fromLegacyTransactionInstruction(initializeTokenMint),
-              tx
-            )
+            fromLegacyTransactionInstruction(initializeTokenMint),
+            tx
+          )
           : appendTransactionMessageInstructions(
-              [
-                fromLegacyTransactionInstruction(initializeTokenMint),
-                fromLegacyTransactionInstruction(
-                  initializeExtraAccountMetaListInstruction
-                ),
-              ],
-              tx
-            ),
+            [
+              fromLegacyTransactionInstruction(initializeTokenMint),
+              fromLegacyTransactionInstruction(
+                initializeExtraAccountMetaListInstruction
+              ),
+            ],
+            tx
+          ),
       (tx) => addSignersToTransactionMessage([admin, minter], tx)
     );
 

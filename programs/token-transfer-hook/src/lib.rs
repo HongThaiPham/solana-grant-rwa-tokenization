@@ -25,7 +25,7 @@ pub enum TokenTransferHookError {
     UnAuthorized,
 }
 
-declare_id!("3iSipiR8nmukvNan7ZWDJ2Cx7V7EmHPXLkQmsN1nrEna");
+declare_id!("6EKeiVFzZQuo85Ft72nyTQ2vFM5iTGE3fxxvt2LkMvV4");
 
 #[program]
 pub mod token_transfer_hook {

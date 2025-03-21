@@ -17,8 +17,8 @@ use anchor_spl::{
 };
 
 use crate::{
-    update_account_minimum_lamports, GovernanceConfig, AVAILABLE_CREDITS_KEY,
-    GOVERNANCE_CONFIG_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED,
+    minter_controller::MinterController, update_account_minimum_lamports, AVAILABLE_CREDITS_KEY,
+    MINTED_CREDITS_KEY, MINTER_NFT_SEED,
 };
 
 #[derive(Accounts)]
@@ -26,11 +26,13 @@ pub struct IssueMinterCert<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
-      has_one = authority,
-      seeds = [GOVERNANCE_CONFIG_SEED],
-      bump = config_account.bump
+        init,
+        payer = authority,
+        space = 8 + MinterController::INIT_SPACE,
+      seeds = [MINTER_NFT_SEED, mint.key.as_ref()],
+      bump
     )]
-    pub config_account: Box<Account<'info, GovernanceConfig>>,
+    pub minter_controller: Box<Account<'info, MinterController>>,
     /// CHECK: This is nft keeper account
     pub receiver: AccountInfo<'info>,
     #[account(
@@ -38,11 +40,11 @@ pub struct IssueMinterCert<'info> {
       payer = authority,
       mint::token_program = token_program,
       mint::decimals = 0,
-      mint::authority = config_account,
-      extensions::metadata_pointer::authority = config_account,
+      mint::authority = minter_controller,
+      extensions::metadata_pointer::authority = minter_controller,
       extensions::metadata_pointer::metadata_address = mint,
-      extensions::close_authority::authority = config_account,
-      extensions::permanent_delegate::delegate = config_account,
+      extensions::close_authority::authority = minter_controller,
+      extensions::permanent_delegate::delegate = minter_controller,
       seeds = [MINTER_NFT_SEED, receiver.key.as_ref()],
       bump
     )]
@@ -61,7 +63,18 @@ pub struct IssueMinterCert<'info> {
 }
 
 impl<'info> IssueMinterCert<'info> {
-    pub fn handler(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
+    pub fn handler(
+        &mut self,
+        name: String,
+        symbol: String,
+        uri: String,
+        bumps: &IssueMinterCertBumps,
+    ) -> Result<()> {
+        self.minter_controller.set_inner(MinterController {
+            mint: self.mint.key(),
+            user: self.receiver.key(),
+            bump: bumps.minter_controller,
+        });
         self.update_account_lamports_by_extensions(
             name.clone(),
             symbol.clone(),
@@ -74,7 +87,12 @@ impl<'info> IssueMinterCert<'info> {
     }
 
     fn mint_and_send_nft(&mut self) -> Result<()> {
-        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let mint_key = self.mint.key();
+        let seeds = &[
+            MINTER_NFT_SEED,
+            mint_key.as_ref(),
+            &[self.minter_controller.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
 
         // nint just 1 token, because it's a NFT
@@ -84,7 +102,7 @@ impl<'info> IssueMinterCert<'info> {
                 MintTo {
                     mint: self.mint.to_account_info(),
                     to: self.receiver_token_account.to_account_info(),
-                    authority: self.config_account.to_account_info(),
+                    authority: self.minter_controller.to_account_info(),
                 },
                 signer_seeds,
             ),
@@ -96,7 +114,7 @@ impl<'info> IssueMinterCert<'info> {
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 SetAuthority {
-                    current_authority: self.config_account.to_account_info(),
+                    current_authority: self.minter_controller.to_account_info(),
                     account_or_mint: self.mint.to_account_info(),
                 },
                 signer_seeds,
@@ -109,7 +127,12 @@ impl<'info> IssueMinterCert<'info> {
     }
 
     fn init_nft_metadata(&mut self, name: String, symbol: String, uri: String) -> Result<()> {
-        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let mint_key = self.mint.key();
+        let seeds = &[
+            MINTER_NFT_SEED,
+            mint_key.as_ref(),
+            &[self.minter_controller.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
         // init token metadata
 
@@ -119,8 +142,8 @@ impl<'info> IssueMinterCert<'info> {
                 TokenMetadataInitialize {
                     mint: self.mint.to_account_info(),
                     program_id: self.token_program.to_account_info(),
-                    mint_authority: self.config_account.to_account_info(),
-                    update_authority: self.config_account.to_account_info(),
+                    mint_authority: self.minter_controller.to_account_info(),
+                    update_authority: self.minter_controller.to_account_info(),
                     metadata: self.mint.to_account_info(),
                 },
                 signer_seeds,
@@ -135,7 +158,7 @@ impl<'info> IssueMinterCert<'info> {
                 self.token_program.to_account_info(),
                 TokenMetadataUpdateField {
                     metadata: self.mint.to_account_info(),
-                    update_authority: self.config_account.to_account_info(),
+                    update_authority: self.minter_controller.to_account_info(),
                     program_id: self.token_program.to_account_info(),
                 },
                 signer_seeds,
@@ -149,7 +172,7 @@ impl<'info> IssueMinterCert<'info> {
                 self.token_program.to_account_info(),
                 TokenMetadataUpdateField {
                     metadata: self.mint.to_account_info(),
-                    update_authority: self.config_account.to_account_info(),
+                    update_authority: self.minter_controller.to_account_info(),
                     program_id: self.token_program.to_account_info(),
                 },
                 signer_seeds,
@@ -169,7 +192,7 @@ impl<'info> IssueMinterCert<'info> {
         extension: &[ExtensionType],
     ) -> Result<()> {
         let token_metadata = TokenMetadata {
-            update_authority: OptionalNonZeroPubkey(self.config_account.key()),
+            update_authority: OptionalNonZeroPubkey(self.minter_controller.key()),
             mint: self.mint.key(),
             name: name.to_string(),
             symbol: symbol.to_string(),

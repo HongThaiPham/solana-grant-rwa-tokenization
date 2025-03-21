@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_2022::{
-        initialize_mint2, spl_token_2022::extension::ExtensionType, InitializeMint2, Token2022,
-    },
+    token_2022::{initialize_mint2, InitializeMint2, Token2022},
     token_interface::{
         metadata_pointer_initialize, mint_close_authority_initialize, token_metadata_initialize,
         transfer_fee_initialize, transfer_hook_initialize, MetadataPointerInitialize, Mint,

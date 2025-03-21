@@ -11,7 +11,7 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4");
+declare_id!("Ae4Kt2dtTVNi2H4qgsoD3u1a7K5yjxZUaVVt1XPviMsv");
 
 #[program]
 pub mod rwa_tokenization {
@@ -27,7 +27,7 @@ pub mod rwa_tokenization {
         symbol: String,
         uri: String,
     ) -> Result<()> {
-        ctx.accounts.handler(name, symbol, uri)
+        ctx.accounts.handler(name, symbol, uri, &ctx.bumps)
     }
 
     pub fn update_quota_credit(ctx: Context<UpdateQuotaCredit>, new_credit: u64) -> Result<()> {
@@ -40,7 +40,7 @@ pub mod rwa_tokenization {
         symbol: String,
         uri: String,
     ) -> Result<()> {
-        ctx.accounts.handler(name, symbol, uri)
+        ctx.accounts.handler(name, symbol, uri, &ctx.bumps)
     }
 
     pub fn init_rwa_token(

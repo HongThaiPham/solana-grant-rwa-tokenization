@@ -16,9 +16,8 @@ use anchor_spl::{
 };
 
 use crate::{
-    error::MyErrorCode, GovernanceConfig, MintAuthority, AVAILABLE_CREDITS_KEY,
-    CARBON_CREDIT_TOKEN_SEED, GOVERNANCE_CONFIG_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED,
-    MINT_AUTHORITY_SEED,
+    error::MyErrorCode, MintAuthority, MinterController, AVAILABLE_CREDITS_KEY,
+    CARBON_CREDIT_TOKEN_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
 };
 
 #[derive(Accounts)]
@@ -28,10 +27,12 @@ pub struct MintRwaToken<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
     #[account(
-        seeds = [GOVERNANCE_CONFIG_SEED],
-        bump = config_account.bump,
+        constraint = minter_controller.mint == minter_nft_mint.key(),
+        constraint = minter_controller.user == creator.key(),
+      seeds = [MINTER_NFT_SEED, minter_nft_mint.key().as_ref()],
+      bump = minter_controller.bump
     )]
-    pub config_account: Box<Account<'info, GovernanceConfig>>,
+    pub minter_controller: Box<Account<'info, MinterController>>,
     #[account(
         constraint = mint_authority.authority == creator.key(),
         constraint = mint_authority.mint == mint.key(),
@@ -103,7 +104,12 @@ impl<'info> MintRwaToken<'info> {
 
             self.mint_to_recevier(amount)?;
 
-            let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+            let minter_nft_mint_key = self.minter_nft_mint.key();
+            let seeds = &[
+                MINTER_NFT_SEED,
+                minter_nft_mint_key.as_ref(),
+                &[self.minter_controller.bump],
+            ];
             let signer_seeds = &[&seeds[..]];
 
             token_metadata_update_field(
@@ -112,7 +118,7 @@ impl<'info> MintRwaToken<'info> {
                     TokenMetadataUpdateField {
                         metadata: self.minter_nft_mint.to_account_info(),
                         program_id: self.token_program.to_account_info(),
-                        update_authority: self.config_account.to_account_info(),
+                        update_authority: self.minter_controller.to_account_info(),
                     },
                     signer_seeds,
                 ),
@@ -142,7 +148,7 @@ impl<'info> MintRwaToken<'info> {
                     TokenMetadataUpdateField {
                         metadata: self.minter_nft_mint.to_account_info(),
                         program_id: self.token_program.to_account_info(),
-                        update_authority: self.config_account.to_account_info(),
+                        update_authority: self.minter_controller.to_account_info(),
                     },
                     signer_seeds,
                 ),

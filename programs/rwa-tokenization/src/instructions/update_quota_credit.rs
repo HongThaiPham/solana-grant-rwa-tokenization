@@ -7,18 +7,19 @@ use anchor_spl::{
     },
 };
 
-use crate::{GovernanceConfig, AVAILABLE_CREDITS_KEY, GOVERNANCE_CONFIG_SEED, MINTER_NFT_SEED};
+use crate::{MinterController, AVAILABLE_CREDITS_KEY, MINTER_NFT_SEED};
 
 #[derive(Accounts)]
 pub struct UpdateQuotaCredit<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
-        has_one = authority,
-        seeds = [GOVERNANCE_CONFIG_SEED],
-        bump = config_account.bump,
+        has_one = mint,
+        constraint = minter_controller.user == receiver.key(),
+      seeds = [MINTER_NFT_SEED, mint.key().as_ref()],
+      bump = minter_controller.bump
     )]
-    pub config_account: Box<Account<'info, GovernanceConfig>>,
+    pub minter_controller: Box<Account<'info, MinterController>>,
     /// CHECK: This is nft keeper account
     pub receiver: AccountInfo<'info>,
     #[account(
@@ -34,7 +35,12 @@ pub struct UpdateQuotaCredit<'info> {
 
 impl<'info> UpdateQuotaCredit<'info> {
     pub fn handler(&mut self, new_credit: u64) -> Result<()> {
-        let seeds = &[GOVERNANCE_CONFIG_SEED, &[self.config_account.bump]];
+        let mint_key = self.mint.key();
+        let seeds = &[
+            MINTER_NFT_SEED,
+            mint_key.as_ref(),
+            &[self.minter_controller.bump],
+        ];
         let signer_seeds = &[&seeds[..]];
         token_metadata_update_field(
             CpiContext::new_with_signer(
@@ -42,7 +48,7 @@ impl<'info> UpdateQuotaCredit<'info> {
                 TokenMetadataUpdateField {
                     program_id: self.token_program.to_account_info(),
                     metadata: self.mint.to_account_info(),
-                    update_authority: self.config_account.to_account_info(),
+                    update_authority: self.minter_controller.to_account_info(),
                 },
                 signer_seeds,
             ),
