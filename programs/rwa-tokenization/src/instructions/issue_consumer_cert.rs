@@ -86,6 +86,7 @@ impl<'info> IssueConsumerCert<'info> {
         bumps: &IssueConsumerCertBumps,
     ) -> Result<()> {
         self.consumer_controller.set_inner(ConsumerController {
+            rwa_mint: self.rwa_mint.key(),
             mint: self.mint.key(),
             user: self.receiver.key(),
             bump: bumps.consumer_controller,

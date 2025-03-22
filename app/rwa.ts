@@ -594,7 +594,6 @@ const do_test = async (
           consumer: consumer1.address,
           mint: carbonCreditsMintAddress,
           nftMint: nftMint.address,
-          transferHookProgram: transferHookProgram.programId,
         })
         .instruction();
 
