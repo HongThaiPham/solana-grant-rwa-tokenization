@@ -35,7 +35,12 @@ import {
 } from "@solana-program/token-2022";
 
 (async () => {
-  const { payer: admin, rpc, sendAndConfirmTransaction, provider } = await getConfig();
+  const {
+    payer: admin,
+    rpc,
+    sendAndConfirmTransaction,
+    provider,
+  } = await getConfig();
   const program = new Program<RwaTokenization>(idlRwaTokenization, provider);
 
   const [governanceConfigAccount] = await getProgramDerivedAddress({
@@ -244,52 +249,6 @@ const do_test = async (
     );
   }
 
-  // issue a consumer cert nft
-  {
-    console.log("--------------------");
-    console.info("Issue consumer cert nft");
-    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-    const issueNftInstruction = await program.methods
-      .issueConsumerCert(
-        consumernftMetadata.name,
-        consumernftMetadata.symbol,
-        consumernftMetadata.uri
-      )
-      .accounts({
-        receiver: consumer1.address,
-      })
-      .instruction();
-
-    const transactionMintNftMessage = pipe(
-      createTransactionMessage({
-        version: 0,
-      }),
-      (tx) => setTransactionMessageFeePayer(admin.address, tx),
-      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-      (tx) =>
-        appendTransactionMessageInstruction(
-          fromLegacyTransactionInstruction(issueNftInstruction),
-          tx
-        ),
-      (tx) => addSignersToTransactionMessage([admin], tx)
-    );
-
-    const signedTransactionMintNft = await signTransactionMessageWithSigners(
-      transactionMintNftMessage
-    );
-
-    await sendAndConfirmTransaction(signedTransactionMintNft, {
-      commitment: "confirmed",
-    });
-
-    console.info(
-      `Consumer NFT minted tx: ${explorerUrl(
-        getSignatureFromTransaction(signedTransactionMintNft)
-      )}`
-    );
-  }
-
   // init token carbon credits mint
   const [nftMinterMintAddress] = await getProgramDerivedAddress({
     programAddress: fromLegacyPublicKey(program.programId),
@@ -344,18 +303,18 @@ const do_test = async (
       (tx) =>
         !isClose
           ? appendTransactionMessageInstruction(
-            fromLegacyTransactionInstruction(initializeTokenMint),
-            tx
-          )
-          : appendTransactionMessageInstructions(
-            [
               fromLegacyTransactionInstruction(initializeTokenMint),
-              fromLegacyTransactionInstruction(
-                initializeExtraAccountMetaListInstruction
-              ),
-            ],
-            tx
-          ),
+              tx
+            )
+          : appendTransactionMessageInstructions(
+              [
+                fromLegacyTransactionInstruction(initializeTokenMint),
+                fromLegacyTransactionInstruction(
+                  initializeExtraAccountMetaListInstruction
+                ),
+              ],
+              tx
+            ),
       (tx) => addSignersToTransactionMessage([admin, minter], tx)
     );
 
@@ -373,6 +332,55 @@ const do_test = async (
       )}`
     );
   }
+
+  // issue a consumer cert nft
+  {
+    console.log("--------------------");
+    console.info("Issue consumer cert nft");
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const issueNftInstruction = await program.methods
+      .issueConsumerCert(
+        consumernftMetadata.name,
+        consumernftMetadata.symbol,
+        consumernftMetadata.uri
+      )
+      .accounts({
+        minter: minter.address,
+        payer: admin.address,
+        receiver: consumer1.address,
+      })
+      .instruction();
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        appendTransactionMessageInstruction(
+          fromLegacyTransactionInstruction(issueNftInstruction),
+          tx
+        ),
+      (tx) => addSignersToTransactionMessage([admin, minter], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Consumer NFT minted tx: ${explorerUrl(
+        getSignatureFromTransaction(signedTransactionMintNft)
+      )}`
+    );
+  }
+
   // mint more carbon credits token
   {
     console.log("--------------------");
@@ -484,6 +492,8 @@ const do_test = async (
           consumernftMetadata.uri
         )
         .accounts({
+          minter: minter.address,
+          payer: admin.address,
           receiver: minter.address,
         })
         .instruction();
@@ -500,7 +510,7 @@ const do_test = async (
             fromLegacyTransactionInstruction(instruction),
             tx
           ),
-        (tx) => addSignersToTransactionMessage([admin], tx)
+        (tx) => addSignersToTransactionMessage([admin, minter], tx)
       );
 
       const signedTransaction = await signTransactionMessageWithSigners(

@@ -14,25 +14,44 @@ use anchor_spl::{
     },
 };
 
-use crate::{update_account_minimum_lamports, ConsumerController, CONSUMER_NFT_SEED};
+use crate::{
+    update_account_minimum_lamports, ConsumerController, CARBON_CREDIT_TOKEN_SEED,
+    CONSUMER_NFT_SEED, MINTER_NFT_SEED,
+};
 
 #[derive(Accounts)]
 pub struct IssueConsumerCert<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
+    #[account(mut)]
+    pub minter: Signer<'info>,
+    /// CHECK: This is nft keeper account
+    pub receiver: AccountInfo<'info>,
+    #[account(
+      mint::token_program = token_program,
+      mint::decimals = 0,
+      seeds = [MINTER_NFT_SEED, minter.key.as_ref()],
+      bump
+    )]
+    pub minter_nft_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        mint::token_program = token_program,
+        mint::decimals = 0,
+        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
+        bump
+    )]
+    pub rwa_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         init,
-        payer = authority,
+        payer = payer,
         space = 8 + ConsumerController::INIT_SPACE,
       seeds = [CONSUMER_NFT_SEED, mint.key.as_ref()],
       bump
     )]
     pub consumer_controller: Box<Account<'info, ConsumerController>>,
-    /// CHECK: This is nft keeper account
-    pub receiver: AccountInfo<'info>,
     #[account(
       init,
-      payer = authority,
+      payer = payer,
       mint::token_program = token_program,
       mint::decimals = 0,
       mint::authority = consumer_controller,
@@ -40,13 +59,13 @@ pub struct IssueConsumerCert<'info> {
       extensions::metadata_pointer::metadata_address = mint,
       extensions::close_authority::authority = consumer_controller,
       extensions::permanent_delegate::delegate = consumer_controller,
-      seeds = [CONSUMER_NFT_SEED, receiver.key.as_ref()],
+      seeds = [CONSUMER_NFT_SEED, rwa_mint.key().as_ref(), receiver.key.as_ref()],
       bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
       init,
-      payer = authority,
+      payer = payer,
       associated_token::token_program = token_program,
       associated_token::mint = mint,
       associated_token::authority = receiver
@@ -173,7 +192,7 @@ impl<'info> IssueConsumerCert<'info> {
 
         update_account_minimum_lamports(
             self.mint.to_account_info(),
-            self.authority.to_account_info(),
+            self.payer.to_account_info(),
             self.system_program.to_account_info(),
             total_space,
         )?;

@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-rwa_tokenization = "Ae4Kt2dtTVNi2H4qgsoD3u1a7K5yjxZUaVVt1XPviMsv"
+rwa_tokenization = "49n7Dx4QzjqkMhx9HWrvN3g84eoqBR3oM9BU14zJvYu4"
 token-transfer-hook = "4vB2SxD3TQ7TNEk7XYAbG63peM63S1W6c1gthEyGE7xN"
 
 [registry]

@@ -25,7 +25,7 @@ pub enum TokenTransferHookError {
     UnAuthorized,
 }
 
-declare_id!("6EKeiVFzZQuo85Ft72nyTQ2vFM5iTGE3fxxvt2LkMvV4");
+declare_id!("3iSipiR8nmukvNan7ZWDJ2Cx7V7EmHPXLkQmsN1nrEna");
 
 #[program]
 pub mod token_transfer_hook {
@@ -105,6 +105,7 @@ impl<'info> InitializeExtraAccountMetaList<'info> {
                     Seed::Literal {
                         bytes: b"c".to_vec(),
                     },
+                    Seed::AccountKey { index: 1 },
                     Seed::AccountData {
                         account_index: 0,
                         data_index: 32,
@@ -120,6 +121,7 @@ impl<'info> InitializeExtraAccountMetaList<'info> {
                     Seed::Literal {
                         bytes: b"c".to_vec(),
                     },
+                    Seed::AccountKey { index: 1 },
                     Seed::AccountData {
                         account_index: 2,
                         data_index: 32,
@@ -154,7 +156,7 @@ pub struct TransferHook<'info> {
     #[account(
         constraint = source_mint_nft.decimals == 0,
         constraint = source_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
-        seeds = [b"c", source_token.owner.as_ref()],
+        seeds = [b"c", mint.key().as_ref(), source_token.owner.as_ref()],
         bump,
         seeds::program = rwa_program,
     )]
@@ -162,7 +164,7 @@ pub struct TransferHook<'info> {
     #[account(
         constraint = destination_mint_nft.decimals == 0,
         constraint = destination_mint_nft.supply == 1 @TokenTransferHookError::UnAuthorized,
-        seeds = [b"c", destination_token.owner.as_ref()],
+        seeds = [b"c", mint.key().as_ref(), destination_token.owner.as_ref()],
         bump,
         seeds::program = rwa_program,
     )]

@@ -17,14 +17,20 @@ use anchor_spl::{
 };
 
 use crate::{
-    minter_controller::MinterController, update_account_minimum_lamports, AVAILABLE_CREDITS_KEY,
-    MINTED_CREDITS_KEY, MINTER_NFT_SEED,
+    minter_controller::MinterController, update_account_minimum_lamports, GovernanceConfig,
+    AVAILABLE_CREDITS_KEY, GOVERNANCE_CONFIG_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED,
 };
 
 #[derive(Accounts)]
 pub struct IssueMinterCert<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
+    #[account(
+        has_one = authority,
+        seeds = [GOVERNANCE_CONFIG_SEED],
+        bump = config_account.bump,
+    )]
+    pub config_account: Box<Account<'info, GovernanceConfig>>,
     #[account(
         init,
         payer = authority,
