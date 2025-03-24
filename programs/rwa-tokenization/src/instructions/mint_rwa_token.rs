@@ -26,6 +26,8 @@ pub struct MintRwaToken<'info> {
     pub payer: Signer<'info>,
     #[account(mut)]
     pub creator: Signer<'info>,
+    /// CHECK: This is nft keeper account
+    pub receiver: AccountInfo<'info>,
     #[account(
         constraint = minter_controller.mint == minter_nft_mint.key(),
         constraint = minter_controller.user == creator.key(),
@@ -60,9 +62,9 @@ pub struct MintRwaToken<'info> {
         payer = payer,
         associated_token::token_program = token_program,
         associated_token::mint = mint,
-        associated_token::authority = creator
+        associated_token::authority = receiver
     )]
-    pub creator_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         mint::token_program = token_program,
@@ -184,7 +186,7 @@ impl<'info> MintRwaToken<'info> {
                 self.token_program.to_account_info(),
                 MintTo {
                     mint: self.mint.to_account_info(),
-                    to: self.creator_token_account.to_account_info(),
+                    to: self.receiver_token_account.to_account_info(),
                     authority: self.mint_authority.to_account_info(),
                 },
                 signer_seeds,

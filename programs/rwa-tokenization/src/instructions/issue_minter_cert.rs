@@ -3,10 +3,7 @@ use std::vec;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_2022::{
-        spl_token_2022::{self, extension::ExtensionType, instruction::AuthorityType},
-        Token2022,
-    },
+    token_2022::{spl_token_2022::instruction::AuthorityType, Token2022},
     token_interface::{
         mint_to, set_authority,
         spl_pod::optional_keys::OptionalNonZeroPubkey,
@@ -81,12 +78,7 @@ impl<'info> IssueMinterCert<'info> {
             user: self.receiver.key(),
             bump: bumps.minter_controller,
         });
-        self.update_account_lamports_by_extensions(
-            name.clone(),
-            symbol.clone(),
-            uri.clone(),
-            &[ExtensionType::MetadataPointer],
-        )?;
+        self.update_account_lamports_by_metadata(name.clone(), symbol.clone(), uri.clone())?;
         self.init_nft_metadata(name, symbol, uri)?;
         self.mint_and_send_nft()?;
         Ok(())
@@ -190,12 +182,11 @@ impl<'info> IssueMinterCert<'info> {
         Ok(())
     }
 
-    fn update_account_lamports_by_extensions(
+    fn update_account_lamports_by_metadata(
         &mut self,
         name: String,
         symbol: String,
         uri: String,
-        extension: &[ExtensionType],
     ) -> Result<()> {
         let token_metadata = TokenMetadata {
             update_authority: OptionalNonZeroPubkey(self.minter_controller.key()),
@@ -209,19 +200,13 @@ impl<'info> IssueMinterCert<'info> {
             ],
         };
 
-        let space =
-            ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(extension)
-                .unwrap();
-
         let meta_data_space = token_metadata.tlv_size_of().unwrap();
-
-        let total_space = space + meta_data_space;
 
         update_account_minimum_lamports(
             self.mint.to_account_info(),
             self.authority.to_account_info(),
             self.system_program.to_account_info(),
-            total_space,
+            meta_data_space,
         )?;
 
         Ok(())

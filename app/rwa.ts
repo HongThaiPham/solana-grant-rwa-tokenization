@@ -392,6 +392,7 @@ const do_test = async (
       .accounts({
         creator: minter.address,
         payer: admin.address,
+        receiver: minter.address,
       })
       .instruction();
 
@@ -479,6 +480,7 @@ const do_test = async (
         )}`
       );
     }
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     if (isClose) {
       console.log("--------------------");

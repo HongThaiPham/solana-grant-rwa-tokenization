@@ -91,7 +91,7 @@ impl<'info> IssueConsumerCert<'info> {
             user: self.receiver.key(),
             bump: bumps.consumer_controller,
         });
-        self.update_account_lamports_by_extensions(name.clone(), symbol.clone(), uri.clone())?;
+        self.update_account_lamports_by_metadata(name.clone(), symbol.clone(), uri.clone())?;
         self.init_nft_metadata(name, symbol, uri)?;
         self.mint_and_send_nft()?;
         Ok(())
@@ -167,7 +167,7 @@ impl<'info> IssueConsumerCert<'info> {
         Ok(())
     }
 
-    fn update_account_lamports_by_extensions(
+    fn update_account_lamports_by_metadata(
         &mut self,
         name: String,
         symbol: String,
@@ -182,20 +182,13 @@ impl<'info> IssueConsumerCert<'info> {
             ..Default::default()
         };
 
-        let space = ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(&[
-            ExtensionType::MetadataPointer,
-        ])
-        .unwrap();
-
         let meta_data_space = token_metadata.tlv_size_of().unwrap();
-
-        let total_space = space + meta_data_space;
 
         update_account_minimum_lamports(
             self.mint.to_account_info(),
             self.payer.to_account_info(),
             self.system_program.to_account_info(),
-            total_space,
+            meta_data_space,
         )?;
         Ok(())
     }
