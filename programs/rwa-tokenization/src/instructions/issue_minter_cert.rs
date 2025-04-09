@@ -78,6 +78,7 @@ impl<'info> IssueMinterCert<'info> {
         bumps: &IssueMinterCertBumps,
     ) -> Result<()> {
         self.minter_controller.set_inner(MinterController {
+            rwa_mint: self.permissioned_mint.key(),
             mint: self.mint.key(),
             user: self.receiver.key(),
             bump: bumps.minter_controller,

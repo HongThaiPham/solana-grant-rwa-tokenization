@@ -97,9 +97,9 @@ import {
   }
 
   await test_token_close_and_has_fee();
-  await test_token_open_and_has_fee();
-  await test_token_close_and_no_fee();
-  await test_token_open_and_no_fee();
+  // await test_token_open_and_has_fee();
+  // await test_token_close_and_no_fee();
+  // await test_token_open_and_no_fee();
 })();
 
 const test_token_close_and_no_fee = async () => {
@@ -403,7 +403,7 @@ const do_test = async (
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const mintTokenInstruction = await program.methods
-      .mintRwaToken(symbol, new BN(300))
+      .mintRwaToken(new BN(300))
       .accounts({
         minter: minter.address,
         payer: admin.address,

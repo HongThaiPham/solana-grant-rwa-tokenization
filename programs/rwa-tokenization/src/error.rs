@@ -10,4 +10,5 @@ pub enum MyErrorCode {
     NoCredits,
     InvalidAmount,
     InsufficientBalance,
+    InvalidCredit,
 }

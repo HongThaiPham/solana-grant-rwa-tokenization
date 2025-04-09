@@ -11,7 +11,7 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("9C8SF4VE3VBWAmUHg8XTo7KQDFSwcnyff5des7qRBSGm");
+declare_id!("2Dj6oCznAfdaVuBbbsW1AaNNKxshz1uHa8fbhinXzkuh");
 
 #[program]
 pub mod rwa_tokenization {
@@ -65,8 +65,8 @@ pub mod rwa_tokenization {
         )
     }
 
-    pub fn mint_rwa_token(ctx: Context<MintRwaToken>, symbol: String, amount: u64) -> Result<()> {
-        ctx.accounts.handler(symbol, amount)
+    pub fn mint_rwa_token(ctx: Context<MintRwaToken>, amount: u64) -> Result<()> {
+        ctx.accounts.handler(amount)
     }
 
     pub fn retire_token(ctx: Context<RetireToken>, amount: u64) -> Result<()> {

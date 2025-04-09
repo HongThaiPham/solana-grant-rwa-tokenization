@@ -80,7 +80,7 @@ pub struct MintRwaToken<'info> {
 }
 
 impl<'info> MintRwaToken<'info> {
-    pub fn handler(&mut self, _symbol: String, amount: u64) -> Result<()> {
+    pub fn handler(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, MyErrorCode::InvalidAmount);
         // read metadata from nft mint
 
