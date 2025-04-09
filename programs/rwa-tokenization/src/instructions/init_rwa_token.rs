@@ -4,15 +4,15 @@ use anchor_spl::{
     token_2022::{initialize_mint2, InitializeMint2, Token2022},
     token_interface::{
         metadata_pointer_initialize, mint_close_authority_initialize, token_metadata_initialize,
-        transfer_fee_initialize, transfer_hook_initialize, MetadataPointerInitialize, Mint,
-        MintCloseAuthorityInitialize, TokenAccount, TokenMetadataInitialize, TransferFeeInitialize,
+        transfer_fee_initialize, transfer_hook_initialize, MetadataPointerInitialize,
+        MintCloseAuthorityInitialize, TokenMetadataInitialize, TransferFeeInitialize,
         TransferHookInitialize,
     },
 };
 
 use crate::{
-    get_mint_space_with_extensions, update_account_lamports_to_minimum_balance, MintAuthority,
-    CARBON_CREDIT_TOKEN_SEED, MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
+    get_mint_space_with_extensions, update_account_lamports_to_minimum_balance, GovernanceConfig,
+    MintAuthority, CARBON_CREDIT_TOKEN_SEED, GOVERNANCE_CONFIG_SEED, MINT_AUTHORITY_SEED,
 };
 
 #[derive(Accounts)]
@@ -25,41 +25,31 @@ use crate::{
 )]
 pub struct InitRwaToken<'info> {
     #[account(mut)]
-    pub payer: Signer<'info>,
-    #[account(mut)]
-    pub creator: Signer<'info>,
+    pub authority: Signer<'info>,
+    #[account(
+        has_one = authority,
+        seeds = [GOVERNANCE_CONFIG_SEED],
+        bump
+    )]
+    pub config_account: Box<Account<'info, GovernanceConfig>>,
     #[account(
         init,
-        payer = payer,
+        payer = authority,
         space = 8 + MintAuthority::INIT_SPACE,
         seeds = [MINT_AUTHORITY_SEED, mint.key().as_ref()],
         bump
     )]
     pub mint_authority: Box<Account<'info, MintAuthority>>,
-    /// CHECK: This is transfer hook program
+    /// CHECK: This is the mint account for the token
     #[account(
         init,
-        payer = payer,
+        payer = authority,
         space = get_mint_space_with_extensions(is_close, has_fee)?,
-        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
+        seeds = [CARBON_CREDIT_TOKEN_SEED, symbol.as_ref()],
         bump,
         owner = token_program.key()
     )]
     pub mint: UncheckedAccount<'info>,
-    #[account(
-        mint::token_program = token_program,
-        mint::decimals = 0,
-        constraint = minter_nft_mint.supply == 1,
-        seeds = [MINTER_NFT_SEED, creator.key.as_ref()],
-        bump
-    )]
-    pub minter_nft_mint: Box<InterfaceAccount<'info, Mint>>,
-    #[account(
-        associated_token::token_program = token_program,
-        associated_token::mint = minter_nft_mint,
-        associated_token::authority = creator
-    )]
-    pub minter_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// CHECK: This is transfer hook program
     #[account(executable)]
     pub transfer_hook_program: AccountInfo<'info>,
@@ -81,7 +71,7 @@ impl<'info> InitRwaToken<'info> {
         bump: &InitRwaTokenBumps,
     ) -> Result<()> {
         self.mint_authority.set_inner(MintAuthority {
-            authority: self.creator.key(),
+            authority: self.authority.key(),
             mint: self.mint.key(),
             transfer_hook: if is_close {
                 Some(self.transfer_hook_program.key())
@@ -96,7 +86,7 @@ impl<'info> InitRwaToken<'info> {
 
         update_account_lamports_to_minimum_balance(
             self.mint.to_account_info(),
-            self.payer.to_account_info(),
+            self.authority.to_account_info(),
             self.system_program.to_account_info(),
         )?;
         Ok(())

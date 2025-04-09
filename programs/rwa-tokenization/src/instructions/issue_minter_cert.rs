@@ -32,8 +32,8 @@ pub struct IssueMinterCert<'info> {
         init,
         payer = authority,
         space = 8 + MinterController::INIT_SPACE,
-      seeds = [MINTER_NFT_SEED, mint.key.as_ref()],
-      bump
+        seeds = [MINTER_NFT_SEED, mint.key.as_ref()],
+        bump
     )]
     pub minter_controller: Box<Account<'info, MinterController>>,
     /// CHECK: This is nft keeper account
@@ -48,7 +48,7 @@ pub struct IssueMinterCert<'info> {
       extensions::metadata_pointer::metadata_address = mint,
       extensions::close_authority::authority = minter_controller,
       extensions::permanent_delegate::delegate = minter_controller,
-      seeds = [MINTER_NFT_SEED, receiver.key.as_ref()],
+      seeds = [MINTER_NFT_SEED, permissioned_mint.key().as_ref(), receiver.key.as_ref()],
       bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
@@ -60,6 +60,10 @@ pub struct IssueMinterCert<'info> {
       associated_token::authority = receiver
     )]
     pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        mint::token_program = token_program,
+    )]
+    pub permissioned_mint: Box<InterfaceAccount<'info, Mint>>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token2022>,

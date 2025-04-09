@@ -97,21 +97,21 @@ import {
   }
 
   await test_token_close_and_has_fee();
-  // await test_token_open_and_has_fee();
-  // await test_token_close_and_no_fee();
-  // await test_token_open_and_no_fee();
+  await test_token_open_and_has_fee();
+  await test_token_close_and_no_fee();
+  await test_token_open_and_no_fee();
 })();
 
 const test_token_close_and_no_fee = async () => {
   console.info("==============================================");
   console.info("Do the test with token close and no fee");
-  await do_test(true, false);
+  await do_test(`CC${Math.floor(Math.random() * 10000)}`, true, false);
   console.info("Do the test with token close and no fee - Test completed");
 };
 const test_token_open_and_no_fee = async () => {
   console.info("==============================================");
   console.info("Do the test with token open and no fee");
-  await do_test(false, false);
+  await do_test(`CC${Math.floor(Math.random() * 10000)}`, false, false);
   console.info("Do the test with token open and no fee - Test completed");
 };
 
@@ -122,7 +122,13 @@ const test_token_open_and_has_fee = async () => {
   const feeBasisPoints = 100;
   // Maximum fee for transfers in token base units
   const maxFee = new BN(100);
-  await do_test(false, true, feeBasisPoints, maxFee);
+  await do_test(
+    `CC${Math.floor(Math.random() * 10000)}`,
+    false,
+    true,
+    feeBasisPoints,
+    maxFee
+  );
   console.info("Do the test with token open and has fee - Test completed");
 };
 const test_token_close_and_has_fee = async () => {
@@ -132,11 +138,18 @@ const test_token_close_and_has_fee = async () => {
   const feeBasisPoints = 100;
   // Maximum fee for transfers in token base units
   const maxFee = new BN(100);
-  await do_test(true, true, feeBasisPoints, maxFee);
+  await do_test(
+    `CC${Math.floor(Math.random() * 10000)}`,
+    true,
+    true,
+    feeBasisPoints,
+    maxFee
+  );
   console.info("Do the test with token close and has fee - Test completed");
 };
 
 const do_test = async (
+  symbol: string = "CC",
   isClose: boolean,
   hasFee: boolean,
   feeBasisPoints?: number,
@@ -161,6 +174,89 @@ const do_test = async (
     provider
   );
   const admin = payer;
+
+  // init token carbon credits mint
+  const [nftMinterMintAddress] = await getProgramDerivedAddress({
+    programAddress: fromLegacyPublicKey(program.programId),
+    seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
+  });
+
+  const [carbonCreditsMintAddress] = await getProgramDerivedAddress({
+    programAddress: fromLegacyPublicKey(program.programId),
+    seeds: [Buffer.from("cct"), Buffer.from(symbol)],
+  });
+
+  {
+    console.log("--------------------");
+    console.info("Init token carbon credits mint");
+    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    const initializeTokenMint = await program.methods
+      .initRwaToken(
+        "Carbon Credits",
+        symbol,
+        tokenUri,
+        isClose,
+        hasFee,
+        feeBasisPoints ?? 0,
+        maxFee ?? new BN(0)
+      )
+      .accounts({
+        transferHookProgram: transferHookProgram.programId,
+      })
+      .instruction();
+    let initializeExtraAccountMetaListInstruction;
+    if (isClose) {
+      initializeExtraAccountMetaListInstruction =
+        await transferHookProgram.methods
+          .initializeExtraAccountMetaList()
+          .accounts({
+            payer: payer.address,
+            mint: carbonCreditsMintAddress,
+            rwaProgram: program.programId,
+          })
+          .instruction();
+    }
+
+    const transactionMintNftMessage = pipe(
+      createTransactionMessage({
+        version: 0,
+      }),
+      (tx) => setTransactionMessageFeePayer(admin.address, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) =>
+        !isClose
+          ? appendTransactionMessageInstruction(
+              fromLegacyTransactionInstruction(initializeTokenMint),
+              tx
+            )
+          : appendTransactionMessageInstructions(
+              [
+                fromLegacyTransactionInstruction(initializeTokenMint),
+                fromLegacyTransactionInstruction(
+                  initializeExtraAccountMetaListInstruction
+                ),
+              ],
+              tx
+            ),
+      (tx) => addSignersToTransactionMessage([admin], tx)
+    );
+
+    const signedTransactionMintNft = await signTransactionMessageWithSigners(
+      transactionMintNftMessage
+    );
+
+    await sendAndConfirmTransaction(signedTransactionMintNft, {
+      commitment: "confirmed",
+    });
+
+    console.info(
+      `Token carbon credits mint initialized: ${explorerUrl(
+        getSignatureFromTransaction(signedTransactionMintNft)
+      )}`
+    );
+  }
+
   // issue a minter cert nft
   {
     console.log("--------------------");
@@ -175,6 +271,7 @@ const do_test = async (
       )
       .accounts({
         receiver: minter.address,
+        permissionedMint: carbonCreditsMintAddress,
       })
       .instruction();
 
@@ -217,6 +314,7 @@ const do_test = async (
       .updateQuotaCredit(new BN(1000))
       .accounts({
         receiver: minter.address,
+        permissionedMint: carbonCreditsMintAddress,
       })
       .instruction();
 
@@ -249,90 +347,6 @@ const do_test = async (
     );
   }
 
-  // init token carbon credits mint
-  const [nftMinterMintAddress] = await getProgramDerivedAddress({
-    programAddress: fromLegacyPublicKey(program.programId),
-    seeds: [Buffer.from("m"), addressEncoder.encode(minter.address)],
-  });
-
-  const [carbonCreditsMintAddress] = await getProgramDerivedAddress({
-    programAddress: fromLegacyPublicKey(program.programId),
-    seeds: [Buffer.from("cct"), addressEncoder.encode(nftMinterMintAddress)],
-  });
-
-  {
-    console.log("--------------------");
-    console.info("Init token carbon credits mint");
-    let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-    const initializeTokenMint = await program.methods
-      .initRwaToken(
-        "Carbon Credits",
-        "CC",
-        tokenUri,
-        isClose,
-        hasFee,
-        feeBasisPoints ?? 0,
-        maxFee ?? new BN(0)
-      )
-      .accounts({
-        payer: admin.address,
-        creator: minter.address,
-        transferHookProgram: transferHookProgram.programId,
-      })
-      .instruction();
-    let initializeExtraAccountMetaListInstruction;
-    if (isClose) {
-      initializeExtraAccountMetaListInstruction =
-        await transferHookProgram.methods
-          .initializeExtraAccountMetaList()
-          .accounts({
-            payer: payer.address,
-            mint: carbonCreditsMintAddress,
-            rwaProgram: program.programId,
-          })
-          .instruction();
-    }
-
-    const transactionMintNftMessage = pipe(
-      createTransactionMessage({
-        version: 0,
-      }),
-      (tx) => setTransactionMessageFeePayer(admin.address, tx),
-      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-      (tx) =>
-        !isClose
-          ? appendTransactionMessageInstruction(
-              fromLegacyTransactionInstruction(initializeTokenMint),
-              tx
-            )
-          : appendTransactionMessageInstructions(
-              [
-                fromLegacyTransactionInstruction(initializeTokenMint),
-                fromLegacyTransactionInstruction(
-                  initializeExtraAccountMetaListInstruction
-                ),
-              ],
-              tx
-            ),
-      (tx) => addSignersToTransactionMessage([admin, minter], tx)
-    );
-
-    const signedTransactionMintNft = await signTransactionMessageWithSigners(
-      transactionMintNftMessage
-    );
-
-    await sendAndConfirmTransaction(signedTransactionMintNft, {
-      commitment: "confirmed",
-    });
-
-    console.info(
-      `Token carbon credits mint initialized: ${explorerUrl(
-        getSignatureFromTransaction(signedTransactionMintNft)
-      )}`
-    );
-  }
-
   // issue a consumer cert nft
   {
     console.log("--------------------");
@@ -349,6 +363,7 @@ const do_test = async (
         minter: minter.address,
         payer: admin.address,
         receiver: consumer1.address,
+        rwaMint: carbonCreditsMintAddress,
       })
       .instruction();
 
@@ -388,11 +403,12 @@ const do_test = async (
     let { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     const mintTokenInstruction = await program.methods
-      .mintRwaToken(new BN(300))
+      .mintRwaToken(symbol, new BN(300))
       .accounts({
-        creator: minter.address,
+        minter: minter.address,
         payer: admin.address,
         receiver: minter.address,
+        rwaMint: carbonCreditsMintAddress,
       })
       .instruction();
 
@@ -497,6 +513,7 @@ const do_test = async (
           minter: minter.address,
           payer: admin.address,
           receiver: minter.address,
+          rwaMint: carbonCreditsMintAddress,
         })
         .instruction();
 

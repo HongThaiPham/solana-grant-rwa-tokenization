@@ -3,10 +3,7 @@ use std::vec;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_2022::{
-        spl_token_2022::{self, extension::ExtensionType, instruction::AuthorityType},
-        Token2022,
-    },
+    token_2022::{spl_token_2022::instruction::AuthorityType, Token2022},
     token_interface::{
         mint_to, set_authority, spl_pod::optional_keys::OptionalNonZeroPubkey,
         spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
@@ -15,8 +12,7 @@ use anchor_spl::{
 };
 
 use crate::{
-    update_account_minimum_lamports, ConsumerController, CARBON_CREDIT_TOKEN_SEED,
-    CONSUMER_NFT_SEED, MINTER_NFT_SEED,
+    update_account_minimum_lamports, ConsumerController, CONSUMER_NFT_SEED, MINTER_NFT_SEED,
 };
 
 #[derive(Accounts)]
@@ -30,15 +26,12 @@ pub struct IssueConsumerCert<'info> {
     #[account(
       mint::token_program = token_program,
       mint::decimals = 0,
-      seeds = [MINTER_NFT_SEED, minter.key.as_ref()],
+      seeds = [MINTER_NFT_SEED, rwa_mint.key().as_ref(), minter.key.as_ref()],
       bump
     )]
     pub minter_nft_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mint::token_program = token_program,
-        mint::decimals = 0,
-        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
-        bump
     )]
     pub rwa_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(

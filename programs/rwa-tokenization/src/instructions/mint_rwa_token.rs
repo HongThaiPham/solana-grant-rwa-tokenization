@@ -16,8 +16,8 @@ use anchor_spl::{
 };
 
 use crate::{
-    error::MyErrorCode, MintAuthority, MinterController, AVAILABLE_CREDITS_KEY,
-    CARBON_CREDIT_TOKEN_SEED, MINTED_CREDITS_KEY, MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
+    error::MyErrorCode, MintAuthority, MinterController, AVAILABLE_CREDITS_KEY, MINTED_CREDITS_KEY,
+    MINTER_NFT_SEED, MINT_AUTHORITY_SEED,
 };
 
 #[derive(Accounts)]
@@ -25,21 +25,20 @@ pub struct MintRwaToken<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(mut)]
-    pub creator: Signer<'info>,
+    pub minter: Signer<'info>,
     /// CHECK: This is nft keeper account
     pub receiver: AccountInfo<'info>,
     #[account(
         constraint = minter_controller.mint == minter_nft_mint.key(),
-        constraint = minter_controller.user == creator.key(),
+        constraint = minter_controller.user == minter.key(),
       seeds = [MINTER_NFT_SEED, minter_nft_mint.key().as_ref()],
       bump = minter_controller.bump
     )]
     pub minter_controller: Box<Account<'info, MinterController>>,
     #[account(
-        constraint = mint_authority.authority == creator.key(),
-        constraint = mint_authority.mint == mint.key(),
+        constraint = mint_authority.mint == rwa_mint.key(),
         // constraint = mint_authority.transfer_hook == transfer_hook_program.key(),
-        seeds = [MINT_AUTHORITY_SEED, mint.key().as_ref()],
+        seeds = [MINT_AUTHORITY_SEED, rwa_mint.key().as_ref()],
         bump = mint_authority.bump,
     )]
     pub mint_authority: Box<Account<'info, MintAuthority>>,
@@ -48,20 +47,13 @@ pub struct MintRwaToken<'info> {
         mint::token_program = token_program,
         mint::authority = mint_authority,
         mint::decimals = 0,
-        extensions::metadata_pointer::authority = mint_authority,
-        extensions::metadata_pointer::metadata_address = mint,
-        extensions::close_authority::authority = mint_authority,
-        // extensions::transfer_hook::program_id = transfer_hook_program,
-        // extensions::transfer_hook::authority = mint_authority,
-        seeds = [CARBON_CREDIT_TOKEN_SEED, minter_nft_mint.key().as_ref()],
-        bump
     )]
-    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    pub rwa_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         init_if_needed,
         payer = payer,
         associated_token::token_program = token_program,
-        associated_token::mint = mint,
+        associated_token::mint = rwa_mint,
         associated_token::authority = receiver
     )]
     pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -70,14 +62,14 @@ pub struct MintRwaToken<'info> {
         mint::token_program = token_program,
         mint::decimals = 0,
         constraint = minter_nft_mint.supply == 1,
-        seeds = [MINTER_NFT_SEED, creator.key.as_ref()],
+        seeds = [MINTER_NFT_SEED, rwa_mint.key().as_ref(), minter.key.as_ref()],
         bump
     )]
     pub minter_nft_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         associated_token::token_program = token_program,
         associated_token::mint = minter_nft_mint,
-        associated_token::authority = creator
+        associated_token::authority = minter
     )]
     pub minter_nft_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     // /// CHECK: This is transfer hook program
@@ -88,7 +80,7 @@ pub struct MintRwaToken<'info> {
 }
 
 impl<'info> MintRwaToken<'info> {
-    pub fn handler(&mut self, amount: u64) -> Result<()> {
+    pub fn handler(&mut self, _symbol: String, amount: u64) -> Result<()> {
         require!(amount > 0, MyErrorCode::InvalidAmount);
         // read metadata from nft mint
 
@@ -173,7 +165,7 @@ impl<'info> MintRwaToken<'info> {
     }
 
     fn mint_to_recevier(&mut self, amount: u64) -> Result<()> {
-        let mint_key = self.mint.key();
+        let mint_key = self.rwa_mint.key();
         let seeds = &[
             MINT_AUTHORITY_SEED,
             mint_key.as_ref(),
@@ -185,7 +177,7 @@ impl<'info> MintRwaToken<'info> {
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 MintTo {
-                    mint: self.mint.to_account_info(),
+                    mint: self.rwa_mint.to_account_info(),
                     to: self.receiver_token_account.to_account_info(),
                     authority: self.mint_authority.to_account_info(),
                 },

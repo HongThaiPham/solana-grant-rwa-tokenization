@@ -26,10 +26,14 @@ pub struct UpdateQuotaCredit<'info> {
         mut,
         mint::token_program = token_program,
         mint::decimals = 0,
-        seeds = [MINTER_NFT_SEED, receiver.key.as_ref()],
+        seeds = [MINTER_NFT_SEED, permissioned_mint.key().as_ref(), receiver.key.as_ref()],
         bump
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        mint::token_program = token_program,
+    )]
+    pub permissioned_mint: Box<InterfaceAccount<'info, Mint>>,
     pub token_program: Program<'info, Token2022>,
 }
 
