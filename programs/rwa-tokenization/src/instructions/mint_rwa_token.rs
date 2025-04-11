@@ -46,6 +46,7 @@ pub struct MintRwaToken<'info> {
         mut,
         mint::token_program = token_program,
         mint::authority = mint_authority,
+
     )]
     pub rwa_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -172,6 +173,10 @@ impl<'info> MintRwaToken<'info> {
         ];
         let signer_seeds = &[&seeds[..]];
 
+        let mint_amount = amount
+            .checked_mul(10u64.pow(self.rwa_mint.decimals as u32))
+            .unwrap();
+
         mint_to(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
@@ -182,7 +187,7 @@ impl<'info> MintRwaToken<'info> {
                 },
                 signer_seeds,
             ),
-            amount,
+            mint_amount,
         )?;
         Ok(())
     }

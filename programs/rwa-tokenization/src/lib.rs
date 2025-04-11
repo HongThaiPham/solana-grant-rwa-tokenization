@@ -11,7 +11,7 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("8iEcsKoEbmA6Z9UL9QnP9DgrVAF2LYAc3U3QSZK3QLzP");
+declare_id!("5HMSSNbK5v5VCuReWUxG3mGksuWZmcsu9e9fMygTvyJw");
 
 #[program]
 pub mod rwa_tokenization {
