@@ -11,10 +11,11 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("2Dj6oCznAfdaVuBbbsW1AaNNKxshz1uHa8fbhinXzkuh");
+declare_id!("8iEcsKoEbmA6Z9UL9QnP9DgrVAF2LYAc3U3QSZK3QLzP");
 
 #[program]
 pub mod rwa_tokenization {
+
     use super::*;
 
     pub fn initialize(ctx: Context<InitializeConfig>) -> Result<()> {
@@ -47,6 +48,7 @@ pub mod rwa_tokenization {
         ctx: Context<InitRwaToken>,
         name: String,
         symbol: String,
+        decimals: u8,
         uri: String,
         is_close: bool, // whether the mint use transfer hook extension
         has_fee: bool,  // whether the mint use transfer fee extension
@@ -56,6 +58,7 @@ pub mod rwa_tokenization {
         ctx.accounts.handler(
             name,
             symbol,
+            decimals,
             uri,
             is_close,
             has_fee,

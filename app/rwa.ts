@@ -155,6 +155,7 @@ const do_test = async (
   feeBasisPoints?: number,
   maxFee?: BN
 ) => {
+  const decimals = 9;
   const minter = await generateKeyPairSigner();
   const consumer1 = await generateKeyPairSigner();
   const {
@@ -195,6 +196,7 @@ const do_test = async (
       .initRwaToken(
         "Carbon Credits",
         symbol,
+        decimals,
         tokenUri,
         isClose,
         hasFee,
@@ -560,7 +562,7 @@ const do_test = async (
         receiverAta,
         new web3.PublicKey(minter.address),
         BigInt(10),
-        0,
+        decimals,
         [],
         "confirmed",
         TOKEN_2022_PROGRAM_ID

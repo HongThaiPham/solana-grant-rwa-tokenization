@@ -19,6 +19,7 @@ use crate::{
 #[instruction(
     name: String,
     symbol: String,
+    decimals: u8,
     uri: String,
     is_close: bool,
     has_fee: bool,
@@ -63,6 +64,7 @@ impl<'info> InitRwaToken<'info> {
         &mut self,
         name: String,
         symbol: String,
+        decimals: u8,
         uri: String,
         is_close: bool,
         has_fee: bool,
@@ -81,6 +83,18 @@ impl<'info> InitRwaToken<'info> {
             bump: bump.mint_authority,
         });
         self.init_extensions_and_mint(is_close, has_fee, transfer_fee_basis_points, maximum_fee)?;
+
+        initialize_mint2(
+            CpiContext::new(
+                self.token_program.to_account_info(),
+                InitializeMint2 {
+                    mint: self.mint.to_account_info(),
+                },
+            ),
+            decimals,                         // decimals
+            &self.mint_authority.key(),       // mint authority
+            Some(&self.mint_authority.key()), // freeze authority
+        )?;
 
         self.init_nft_metadata(name, symbol, uri)?;
 
@@ -158,18 +172,6 @@ impl<'info> InitRwaToken<'info> {
                 maximum_fee.unwrap(), // maximum fee (maximum units of token per transfer)
             )?;
         }
-
-        initialize_mint2(
-            CpiContext::new(
-                self.token_program.to_account_info(),
-                InitializeMint2 {
-                    mint: self.mint.to_account_info(),
-                },
-            ),
-            0,                                // decimals
-            &self.mint_authority.key(),       // mint authority
-            Some(&self.mint_authority.key()), // freeze authority
-        )?;
 
         Ok(())
     }

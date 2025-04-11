@@ -46,7 +46,6 @@ pub struct MintRwaToken<'info> {
         mut,
         mint::token_program = token_program,
         mint::authority = mint_authority,
-        mint::decimals = 0,
     )]
     pub rwa_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
